@@ -156,58 +156,21 @@ def build_front_headlights(col, mats):
     )
 
 
-def build_front_fog_lights(col, mats):
-    """
-    Build sleek FLUSH lower-bumper dark smoked needle-wedge horizontal LED fog lights (L/R),
-    matching 1X7A0025.jpg & IMG_9278.jpg! Sits flush on outer bumper skin above outer cheek scoop.
-    """
-    nu, nv = 18, 6
-    g_lens = np.zeros((nv, nu, 3), dtype=np.float64)
-    g_back = np.zeros((nv, nu, 3), dtype=np.float64)
-    g_led = np.zeros((nv, nu, 3), dtype=np.float64)
+def build_front_fog_lights(col, mats, opening):
+    """Seat the smoked lens, LED blade and housing behind the bumper edge."""
+    lens = opening.copy()
+    lens[:, :, 1] -= 0.002
+    housing = lens.copy()
+    housing[:, :, 1] -= 0.024
+    for part, grid, mat in (
+        ("SmokedLens", lens, "lens_smoked"),
+        ("Housing", housing, "light_housing"),
+    ):
+        create_grid_surface(f"Light_FrontFog_{part}", grid, col, mats[mat], mirror_x=True, flip_normals=True)
 
-    for j, v in enumerate(np.linspace(0.0, 1.0, nv)):
-        for i, u in enumerate(np.linspace(0.0, 1.0, nu)):
-            x = 0.545 + u * (0.858 - 0.545)
-            y_outer = 2.304 - 0.212 * (u ** 1.38) + 0.008 * math.sin(u * math.pi)
-            h = 0.004 + 0.019 * (u ** 0.78)
-            z_top = 0.335 - 0.006 * (1.0 - u)
-            z = (z_top - h) + v * h
-
-            g_lens[j, i] = (x, y_outer, z)
-            g_back[j, i] = (x - 0.008, y_outer - 0.026, z)
-            z_led = (z_top - h) + (0.36 + 0.28 * v) * h
-            g_led[j, i] = (x - 0.003, y_outer - 0.012, z_led)
-
-    create_grid_surface(
-        "Light_FrontFog_SmokedLens", g_lens, col, material=mats["lens_smoked"],
-        mirror_x=True, flip_normals=False
-    )
-    create_grid_surface(
-        "Light_FrontFog_Housing", g_back, col, material=mats["light_housing"],
-        mirror_x=True, flip_normals=False
-    )
-    create_grid_surface(
-        "Light_FrontFog_LED", g_led, col, material=mats["led_fog"],
-        mirror_x=True, flip_normals=False
-    )
-
-    bez_pts = []
-    for u in np.linspace(0.0, 1.0, 14):
-        x = 0.545 + u * (0.858 - 0.545)
-        y_o = 2.304 - 0.212 * (u ** 1.38) + 0.008 * math.sin(u * math.pi)
-        z_t = 0.335 - 0.006 * (1.0 - u)
-        bez_pts.append((x, y_o - 0.001, z_t))
-    for u in np.linspace(1.0, 0.0, 14):
-        x = 0.545 + u * (0.858 - 0.545)
-        y_o = 2.304 - 0.212 * (u ** 1.38) + 0.008 * math.sin(u * math.pi)
-        h = 0.004 + 0.019 * (u ** 0.78)
-        z_t = 0.335 - 0.006 * (1.0 - u)
-        bez_pts.append((x, y_o - 0.001, z_t - h))
-    create_tube_along_points(
-        "Light_FrontFog_Bezel", bez_pts, 0.0024, col,
-        material=mats["trim_gloss_black"], segments=8, mirror_x=True
-    )
+    blade = np.array([lens[0] * (1 - t) + lens[-1] * t for t in (0.36, 0.65)])
+    blade[:, :, 1] -= 0.010
+    create_grid_surface("Light_FrontFog_LED", blade, col, mats["led_fog"], mirror_x=True, flip_normals=True)
 
 
 def _taillight_point(u, v):
@@ -351,10 +314,10 @@ def build_rear_reflectors(col, mats):
     add_solidify(ref, thickness=0.004, offset=1.0)
 
 
-def build_all_lighting(root_col, mats):
+def build_all_lighting(root_col, mats, fog_opening):
     col = ensure_collection("03_Lighting_Optics", root_col)
     build_front_headlights(col, mats)
-    build_front_fog_lights(col, mats)
+    build_front_fog_lights(col, mats, fog_opening)
     build_rear_taillights(col, mats)
     build_rear_reflectors(col, mats)
     return col

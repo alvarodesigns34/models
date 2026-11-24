@@ -519,6 +519,48 @@ def _build_front_grille(mouth, col, mats):
         )
 
 
+def _cut_front_apron(grid, faces, col, mats):
+    """Fit the rising lower lamp and slim air curtain into the painted apron."""
+    lamp_top, lamp_bottom = 17, 20
+    inner, outer, curtain = 26, 46, 44
+    curtain_bottom = 34
+    rows = np.arange(grid.shape[0])
+    for i in range(inner - 4, outer + 4):
+        column = grid[:, i].copy()
+        x = column[lamp_bottom, 0]
+        z_top = pchip_interpolate(
+            (0.585, 0.670, 0.770, 0.875), (0.364, 0.400, 0.421, 0.434), x,
+        )
+        t = float(np.clip((i - inner) / (outer - inner), 0.0, 1.0))
+        z_bottom = z_top - (0.004 + 0.032 * t ** 0.8)
+        top, bottom = np.interp((z_top, z_bottom), column[::-1, 2], rows[::-1])
+        mapped = np.interp(rows, (0, lamp_top, lamp_bottom, rows[-1]), (0, top, bottom, rows[-1]))
+        blend = smootherstep(inner - 4, inner, i) * (1.0 - smootherstep(outer, outer + 4, i))
+        mapped = rows + (mapped - rows) * blend
+        for axis in range(3):
+            grid[:, i, axis] = np.interp(mapped, rows, column[:, axis])
+
+    faces[lamp_top:lamp_bottom, inner:outer] = False
+    faces[lamp_bottom:curtain_bottom, curtain:outer] = False
+    mouth = grid[lamp_bottom:curtain_bottom + 1, curtain:outer + 1].copy()
+    liner = mouth.copy()
+    center_x = liner[:, :, 0].mean(axis=1, keepdims=True)
+    liner[:, :, 0] = center_x + (liner[:, :, 0] - center_x) * 1.70
+    liner[:, :, 1] -= 0.038
+    liner[:, :, 2] = 0.30 + (liner[:, :, 2] - 0.30) * 1.18
+    create_grid_surface(
+        "Trim_Front_AirCurtain_Duct", liner, col, mats["trim_matte_plastic"],
+        mirror_x=True, flip_normals=True,
+    )
+    for edge, side in ((0, "Inner"), (-1, "Outer")):
+        create_grid_surface(
+            f"Trim_Front_AirCurtain_{side}Wall", (mouth[:, edge], liner[:, edge]),
+            col, mats["trim_matte_plastic"], mirror_x=True, flip_normals=edge == -1,
+        )
+
+    return grid[lamp_top:lamp_bottom + 1, inner:outer + 1].copy()
+
+
 def build_front_bumper(col, mats):
     """
     Wrap-around 2024 Model S Plaid front bumper:
@@ -607,27 +649,12 @@ def build_front_bumper(col, mats):
             must_v = 1.0 - smootherstep(0.04, 0.12, v)
             y -= 0.011 * must_u * must_v
 
-            # 3. Clean Single Concave Outer Air-Curtain Cheek Bay + Slim Fog Wedge Pocket (matching 1X7A0025!)
-            # Crisp upper wedge ledge at z ~ 0.318..0.336 holding flush dark smoked fog lamp!
-            fog_x = smootherstep(0.545, 0.605, x) * (1.0 - smootherstep(0.848, 0.875, x))
-            fog_z = smootherstep(0.302, 0.316, z) * (1.0 - smootherstep(0.332, 0.346, z))
-
-            # Clean smooth single concave triangular-ish cheek scoop directly below fog strip (z ~ 0.175..0.306),
-            # deepening smoothly outward into the vertical black air-curtain slot at x ~ 0.82..0.87!
-            scoop_t_x = smootherstep(0.560, 0.835, x)
-            scoop_x = scoop_t_x * (1.0 - smootherstep(0.855, 0.882, x))
-            scoop_z = smootherstep(0.174, 0.205, z) * (1.0 - smootherstep(0.296, 0.316, z))
-
-            curtain_x = smootherstep(0.805, 0.828, x) * (1.0 - smootherstep(0.858, 0.880, x))
-            curtain_z = smootherstep(0.178, 0.198, z) * (1.0 - smootherstep(0.315, 0.338, z))
-
-            indent_side = max(
-                0.036 * fog_x * fog_z,
-                0.030 * scoop_x * scoop_z,
-                0.058 * curtain_x * curtain_z,
-            )
-            y -= indent_side * math.cos(ang * 0.62)
-            x -= indent_side * 0.38 * math.sin(ang * 0.62)
+            # Gentle concave cheek around the lamp/duct opening.
+            scoop_x = smootherstep(0.56, 0.85, x) * (1.0 - smootherstep(0.87, 0.90, x))
+            scoop_z = smootherstep(0.166, 0.210, z) * (1.0 - smootherstep(0.355, 0.447, z))
+            scoop = 0.031 * scoop_x * scoop_z
+            y -= scoop * math.cos(ang * 0.62)
+            x -= scoop * 0.30 * math.sin(ang * 0.62)
 
             grid[j, i] = (x, y, z)
 
@@ -641,8 +668,9 @@ def build_front_bumper(col, mats):
     faces = np.ones((nv - 1, nu - 1), dtype=bool)
     faces[top:bottom, :side] = False
     mouth = grid[top:bottom + 1, :side + 1]
+    fog_opening = _cut_front_apron(grid, faces, col, mats)
     seam = [(0, i) for i, u in enumerate(us) if u >= lamp_tip]
-    bumper = create_grid_surface(
+    create_grid_surface(
         "Body_Front_Bumper", grid, col, material=mats["paint"],
         mirror_x=True, flip_normals=True, face_mask=faces,
         add_flange=True, flange_depth=0.014, flange_bevel=0.002, flange_exclude=seam,
@@ -679,16 +707,7 @@ def build_front_bumper(col, mats):
     mod = m_obj.modifiers.new("MirrorX", "MIRROR")
     mod.use_axis = (True, False, False)
 
-    # Narrow Vertical Outer Air Curtain Dark Slot Backing (L/R)
-    ag = np.zeros((10, 8, 3), dtype=np.float64)
-    for j, tz in enumerate(np.linspace(0.0, 1.0, 10)):
-        z = 0.180 + tz * (0.334 - 0.180)
-        for i, tx in enumerate(np.linspace(0.0, 1.0, 8)):
-            x = 0.808 + tx * (0.868 - 0.808)
-            y = 2.045 - 0.078 * tx
-            ag[j, i] = (x, y, z)
-    create_grid_surface("Trim_Front_AirCurtain_Duct", ag, col, material=mats["trim_matte_plastic"], mirror_x=True, flip_normals=True)
-    return bumper
+    return fog_opening
 
 
 # ==============================================================================
@@ -1244,7 +1263,7 @@ def build_all_bodywork(root_col, mats):
     clay = build_master_side_clay(col)
     rear_clay = build_master_rear_haunch_clay(col)
     build_hood(col, mats)
-    build_front_bumper(col, mats)
+    fog_opening = build_front_bumper(col, mats)
     build_front_fender(col, mats, clay)
     build_doors(col, mats, clay)
     build_rear_quarter(col, mats, clay, rear_clay)
@@ -1252,4 +1271,4 @@ def build_all_bodywork(root_col, mats):
     build_rear_tailgate(col, mats)
     build_rear_bumper_and_diffuser(col, mats, rear_clay)
     build_underbody_and_shadow_tub(col, mats)
-    return col
+    return col, fog_opening

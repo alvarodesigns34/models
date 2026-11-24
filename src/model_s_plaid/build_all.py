@@ -86,9 +86,9 @@ def build_vehicle(save_blend=True):
     root_col = ensure_collection("Tesla_Model_S_Plaid_2024_UltraRed")
 
     mats = create_all_materials()
-    build_all_bodywork(root_col, mats)
+    _, fog_opening = build_all_bodywork(root_col, mats)
     build_all_glazing(root_col, mats)
-    build_all_lighting(root_col, mats)
+    build_all_lighting(root_col, mats, fog_opening)
     build_all_wheels_and_brakes(root_col, mats)
     build_all_exterior_details(root_col, mats)
     build_all_interior(root_col, mats)
