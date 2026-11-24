@@ -27,7 +27,7 @@ def _clear_environment_collection():
     return col
 
 
-def _set_light_strengths(drl=10.0, proj=4.5, fog=2.5, tail=8.5, screens=1.4):
+def _set_light_strengths(drl=3.0, proj=0.0, fog=0.0, tail=8.5, screens=1.4):
     """Adjust vehicle lighting emission intensities smoothly for daylight vs studio vs night."""
     mapping = {
         "LED_DRL_White": drl,
@@ -239,7 +239,7 @@ def setup_environment(mode="studio"):
         # 6. Subtle Cabin Interior Soft Dome Fill so rich All-Black Sport Seats & Carbon Dash read naturally
         _add_area_light("Studio_CabinFill", (0.0, 0.1, 1.28), (0.0, -0.1, 0.6), 0.75, 0.95, 6.5, (0.94, 0.97, 1.0), col, spread_deg=120)
 
-        _set_light_strengths(drl=14.0, proj=4.5, fog=3.5, tail=11.0, screens=2.4)
+        _set_light_strengths(tail=11.0, screens=2.4)
         scene.view_settings.exposure = -0.12
 
     elif mode == "daylight":
@@ -258,7 +258,7 @@ def setup_environment(mode="studio"):
         wlinks.new(sky.outputs["Color"], w_bg.inputs["Color"])
         w_bg.inputs["Strength"].default_value = 0.22
 
-        _set_light_strengths(drl=18.0, proj=2.0, fog=1.0, tail=12.0, screens=1.5)
+        _set_light_strengths(drl=5.0, tail=12.0, screens=1.5)
         scene.view_settings.exposure = -1.75
 
     elif mode == "overcast":
@@ -277,7 +277,7 @@ def setup_environment(mode="studio"):
         wlinks.new(ramp.outputs["Color"], w_bg.inputs["Color"])
         w_bg.inputs["Strength"].default_value = 2.4
 
-        _set_light_strengths(drl=16.0, proj=3.0, fog=2.0, tail=11.0, screens=1.6)
+        _set_light_strengths(drl=4.0, tail=11.0, screens=1.6)
         scene.view_settings.exposure = -0.45
 
     elif mode == "night":

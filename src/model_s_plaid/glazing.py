@@ -145,7 +145,7 @@ def build_side_glazing_and_dlo(col, mats):
     # 1. Front Door Window (Y = -0.175 to +0.835)
     g_fw = _eval_side_window_surface(-0.175, 0.835, ny=24, nv=14, x_inset=0.006)
     fw = create_grid_surface(
-        "Glass_Front_Door", g_fw, col, material=mats["glass_side"],
+        "Glass_Front_Door", g_fw, col, material=mats["glass_front_side"],
         mirror_x=True, flip_normals=False
     )
 
@@ -177,7 +177,7 @@ def build_side_glazing_and_dlo(col, mats):
     # 3. Rear Door Window (Y = -1.035 to -0.270)
     g_rw = _eval_side_window_surface(-1.035, -0.270, ny=20, nv=14, x_inset=0.006)
     rw = create_grid_surface(
-        "Glass_Rear_Door", g_rw, col, material=mats["glass_side"],
+        "Glass_Rear_Door", g_rw, col, material=mats["glass_rear_side"],
         mirror_x=True, flip_normals=False
     )
 
@@ -188,7 +188,7 @@ def build_side_glazing_and_dlo(col, mats):
     # 4. C-Pillar Fixed Quarter Glass (Y = -1.505 to -1.060)
     g_qw = _eval_side_window_surface(-1.505, -1.060, ny=16, nv=10, x_inset=0.006)
     qw = create_grid_surface(
-        "Glass_Quarter_Window", g_qw, col, material=mats["glass_side"],
+        "Glass_Quarter_Window", g_qw, col, material=mats["glass_rear_side"],
         mirror_x=True, flip_normals=False
     )
 

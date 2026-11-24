@@ -141,58 +141,67 @@ def build_ultra_red_paint():
     return mat
 
 
-def build_automotive_glass(name, tint_rgb, shadow_rgb, roughness=0.005, ior=1.52,
-                           transmission=0.92, dark_reflect=False):
-    """
-    Physically accurate thin-sheet automotive laminated glass (Cycles architectural glass):
-      - Crisp mirror Fresnel reflections (IOR 1.52) via Layer Weight + Glossy BSDF
-      - Crystal-clear physically tinted transmission via Transparent BSDF (zero milky
-        double-wall TIR artifacts, 2.5x faster Cycles rendering, crisp cabin visibility!)
-      - Clean soft tinted shadow transmission into interior cabin.
+def build_automotive_glass(name, tint_rgb, roughness=0.005, ior=1.52):
+    """Thin parallel-sided glazing with straight-through, tinted transmission.
+
+    Schlick gives the single-interface reflectance F. The sum of internal
+    reflections for a lossless parallel plate is 2F/(1+F). Tint represents
+    absorption through the plate and is applied to the transmitted light.
     """
     mat = _new_material(name)
-    nt = mat.node_tree
-    nodes, links = nt.nodes, nt.links
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
 
-    out = nodes.new("ShaderNodeOutputMaterial")
-    out.location = (760, 0)
+    def math_output(operation, left, right, x, y):
+        node = nodes.new("ShaderNodeMath")
+        node.operation = operation
+        node.location = (x, y)
+        for socket, value in zip(node.inputs, (left, right)):
+            if isinstance(value, bpy.types.NodeSocket):
+                links.new(value, socket)
+            else:
+                socket.default_value = value
+        return node.outputs[0]
 
-    # Glass reflection vs tint balance
-    fresnel = nodes.new("ShaderNodeLayerWeight")
-    fresnel.location = (-220, 260)
-    fresnel.inputs["Blend"].default_value = 0.24 if dark_reflect else 0.16
+    geometry = nodes.new("ShaderNodeNewGeometry")
+    geometry.location = (-1120, 300)
+    dot = nodes.new("ShaderNodeVectorMath")
+    dot.operation = "DOT_PRODUCT"
+    dot.location = (-900, 340)
+    links.new(geometry.outputs["Incoming"], dot.inputs[0])
+    links.new(geometry.outputs["Normal"], dot.inputs[1])
+    # A ray entering from either side sees an air/plate/air stack.
+    cosine = math_output("ABSOLUTE", dot.outputs["Value"], 0.0, -700, 340)
+    grazing = math_output("SUBTRACT", 1.0, cosine, -520, 340)
+    schlick = math_output("POWER", grazing, 5.0, -340, 340)
+    f0 = ((ior - 1.0) / (ior + 1.0)) ** 2
+    single = nodes.new("ShaderNodeMath")
+    single.operation = "MULTIPLY_ADD"
+    single.location = (-160, 340)
+    links.new(schlick, single.inputs[0])
+    single.inputs[1].default_value = 1.0 - f0
+    single.inputs[2].default_value = f0
+    doubled = math_output("MULTIPLY", single.outputs[0], 2.0, 20, 440)
+    total = math_output("ADD", single.outputs[0], 1.0, 20, 240)
+    plate = math_output("DIVIDE", doubled, total, 200, 340)
 
     glossy = nodes.new("ShaderNodeBsdfGlossy")
-    glossy.location = (60, 140)
-    glossy.inputs["Color"].default_value = (0.94, 0.96, 0.98, 1.0)
+    glossy.location = (200, 70)
+    glossy.inputs["Color"].default_value = (1.0, 1.0, 1.0, 1.0)
     glossy.inputs["Roughness"].default_value = roughness
 
-    transp_vis = nodes.new("ShaderNodeBsdfTransparent")
-    transp_vis.location = (60, -60)
-    # Darken glass tint naturally according to VLT
-    transp_vis.inputs["Color"].default_value = (*tint_rgb, 1.0)
+    transmitted = nodes.new("ShaderNodeBsdfTransparent")
+    transmitted.location = (200, -100)
+    transmitted.inputs["Color"].default_value = (*tint_rgb, 1.0)
 
-    mix_glass = nodes.new("ShaderNodeMixShader")
-    mix_glass.location = (340, 80)
-    links.new(fresnel.outputs["Fresnel"], mix_glass.inputs["Fac"])
-    links.new(transp_vis.outputs["BSDF"], mix_glass.inputs[1])
-    links.new(glossy.outputs["BSDF"], mix_glass.inputs[2])
+    mix = nodes.new("ShaderNodeMixShader")
+    mix.location = (410, 160)
+    links.new(plate, mix.inputs[0])
+    links.new(transmitted.outputs[0], mix.inputs[1])
+    links.new(glossy.outputs[0], mix.inputs[2])
 
-    # Shadow ray pass-through so interior seats/dash stay realistically lit
-    transp_sh = nodes.new("ShaderNodeBsdfTransparent")
-    transp_sh.location = (340, -160)
-    transp_sh.inputs["Color"].default_value = (*shadow_rgb, 1.0)
-
-    lp = nodes.new("ShaderNodeLightPath")
-    lp.location = (340, 280)
-
-    mix_final = nodes.new("ShaderNodeMixShader")
-    mix_final.location = (560, 0)
-    links.new(lp.outputs["Is Shadow Ray"], mix_final.inputs["Fac"])
-    links.new(mix_glass.outputs["Shader"], mix_final.inputs[1])
-    links.new(transp_sh.outputs["BSDF"], mix_final.inputs[2])
-    links.new(mix_final.outputs["Shader"], out.inputs["Surface"])
-
+    out = nodes.new("ShaderNodeOutputMaterial")
+    out.location = (620, 160)
+    links.new(mix.outputs[0], out.inputs["Surface"])
     return mat
 
 
@@ -582,23 +591,24 @@ def create_all_materials():
     mats["dark_satin_chrome"] = build_simple_pbr("Dark_Satin_Chrome", (0.38, 0.40, 0.43), metallic=0.96, roughness=0.15)
     mats["plaid_badge"] = build_plaid_badge_mat()
 
-    # Glazing & Optics (Crystal-clear thin-sheet automotive glass with authentic outward normals!)
-    mats["glass_windshield"] = build_automotive_glass("Glass_Windshield", (0.50, 0.56, 0.56), (0.80, 0.84, 0.84), roughness=0.005, dark_reflect=False)
-    mats["glass_roof"] = build_automotive_glass("Glass_Panoramic_Roof", (0.04, 0.045, 0.055), (0.35, 0.38, 0.42), roughness=0.005, dark_reflect=True)
-    mats["glass_side"] = build_automotive_glass("Glass_Side_Window", (0.14, 0.17, 0.18), (0.58, 0.62, 0.62), roughness=0.005, dark_reflect=True)
-    mats["glass_rear"] = build_automotive_glass("Glass_Rear_Hatch", (0.07, 0.085, 0.095), (0.42, 0.45, 0.48), roughness=0.005, dark_reflect=True)
+    # Tint values are linear RGB absorption after one pass through the pane.
+    mats["glass_windshield"] = build_automotive_glass("Glass_Windshield", (0.77, 0.82, 0.81))
+    mats["glass_roof"] = build_automotive_glass("Glass_Panoramic_Roof", (0.05, 0.058, 0.068))
+    mats["glass_front_side"] = build_automotive_glass("Glass_Front_Side_Window", (0.72, 0.77, 0.76))
+    mats["glass_rear_side"] = build_automotive_glass("Glass_Rear_Side_Window", (0.48, 0.53, 0.53))
+    mats["glass_rear"] = build_automotive_glass("Glass_Rear_Hatch", (0.34, 0.39, 0.40))
     mats["glass_frit"] = build_simple_pbr("Glass_Black_Frit", (0.004, 0.004, 0.005), metallic=0.0, roughness=0.04, coat=1.0, coat_rough=0.01)
     mats["glass_mirror"] = build_simple_pbr("Glass_Mirror", (0.85, 0.88, 0.89), metallic=1.0, roughness=0.012)
     mats["camera_lens"] = build_simple_pbr("Camera_HW4_Lens", (0.08, 0.012, 0.016), metallic=0.3, roughness=0.02, coat=1.0, coat_rough=0.01)
 
     # Lighting Optics
-    mats["lens_clear"] = build_automotive_glass("Optic_Clear_Polycarbonate", (0.90, 0.92, 0.94), (0.96, 0.97, 0.98), roughness=0.005, ior=1.58, dark_reflect=False)
-    mats["lens_smoked"] = build_automotive_glass("Optic_Smoked_Polycarbonate", (0.18, 0.18, 0.20), (0.72, 0.72, 0.74), roughness=0.006, ior=1.58, dark_reflect=True)
-    mats["lens_red"] = build_automotive_glass("Optic_Red_Taillight_Lens", (0.52, 0.015, 0.012), (0.72, 0.14, 0.12), roughness=0.008, ior=1.58, dark_reflect=True)
+    mats["lens_clear"] = build_automotive_glass("Optic_Clear_Polycarbonate", (0.96, 0.97, 0.98), ior=1.58)
+    mats["lens_smoked"] = build_automotive_glass("Optic_Smoked_Polycarbonate", (0.26, 0.27, 0.29), roughness=0.006, ior=1.58)
+    mats["lens_red"] = build_automotive_glass("Optic_Red_Taillight_Lens", (0.52, 0.015, 0.012), roughness=0.008, ior=1.58)
     mats["light_housing"] = build_simple_pbr("Light_Housing_Black", (0.008, 0.009, 0.011), metallic=0.08, roughness=0.20, coat=0.4, coat_rough=0.08)
     mats["light_reflector"] = build_simple_pbr("Light_Chrome_Reflector", (0.92, 0.93, 0.95), metallic=1.0, roughness=0.03)
     mats["led_drl"] = build_simple_pbr("LED_DRL_White", (0.96, 0.97, 1.0), roughness=0.12, emission=(0.95, 0.97, 1.0), emission_strength=14.0)
-    mats["led_projector"] = build_simple_pbr("LED_Matrix_Projector", (0.95, 0.96, 1.0), roughness=0.05, coat=1.0, emission=(0.94, 0.96, 1.0), emission_strength=5.5)
+    mats["led_projector"] = build_simple_pbr("LED_Matrix_Projector", (0.11, 0.13, 0.16), metallic=0.4, roughness=0.18, emission=(0.94, 0.96, 1.0), emission_strength=0.0)
     mats["led_fog"] = build_simple_pbr("LED_Fog_Strip", (0.90, 0.92, 0.96), roughness=0.15, emission=(0.92, 0.95, 1.0), emission_strength=3.0)
     mats["led_tail_red"] = build_simple_pbr("LED_Taillight_Crimson", (0.72, 0.010, 0.006), roughness=0.08, coat=0.9, coat_rough=0.02, emission=(0.98, 0.015, 0.005), emission_strength=11.0)
     mats["led_tail_reverse"] = build_simple_pbr("LED_Taillight_Reverse", (0.85, 0.87, 0.90), metallic=0.5, roughness=0.12)

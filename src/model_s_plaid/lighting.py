@@ -12,6 +12,7 @@ import math
 import numpy as np
 import bpy
 import bmesh
+from mathutils import Vector
 
 from . import config as C
 from .body_master import (
@@ -23,7 +24,9 @@ from .body_master import (
 from .geometry_utils import (
     ensure_collection,
     create_grid_surface,
+    create_revolved_mesh,
     create_tube_along_points,
+    cubic_bezier,
     add_solidify,
     set_smooth_shading,
     link_object,
@@ -84,44 +87,50 @@ def build_front_headlights(col, mats):
         material=mats["trim_gloss_black"], segments=8, mirror_x=True
     )
 
-    # Signature White LED DRL Boomerang Light-Pipe (Top Brow -> Outer Corner -> Lower Edge!)
+    # Match the continuous, tapered guide around the outside of the lamp.
+    upper = [(u, 0.82) for u in np.linspace(0.10, 0.81, 25, endpoint=False)]
+    corner = cubic_bezier(
+        (0.81, 0.82), (0.97, 0.82), (0.98, 0.17), (0.83, 0.17),
+        np.linspace(0.0, 1.0, 20, endpoint=False),
+    )
+    lower = [(u, 0.17) for u in np.linspace(0.83, 0.14, 26)]
     drl_pts = []
-    for u in np.linspace(0.06, 0.94, 24):
-        x, y, z = _headlight_outline_point(u, 0.85)
-        drl_pts.append((x - 0.007, y - 0.017, z - 0.002))
-    for v in np.linspace(0.82, 0.16, 8):
-        x, y, z = _headlight_outline_point(0.94, v)
-        drl_pts.append((x - 0.009, y - 0.017, z))
-    for u in np.linspace(0.92, 0.30, 16):
-        x, y, z = _headlight_outline_point(u, 0.14)
-        drl_pts.append((x - 0.007, y - 0.017, z + 0.003))
+    radii = []
+    for u, v in (*upper, *corner, *lower):
+        x, y, z = _headlight_outline_point(u, v)
+        drl_pts.append((x - 0.006, y - 0.014, z))
+        r = 0.0009 + 0.0019 * min(1.0, (u - 0.08) / 0.22)
+        radii.append((r, r * 0.8))
     create_tube_along_points(
-        "Light_Headlight_DRL_Boomerang", drl_pts, (0.0056, 0.0046), col,
-        material=mats["led_drl"], segments=12, mirror_x=True
+        "Light_Headlight_DRL_Boomerang", drl_pts, radii, col,
+        material=mats["led_drl"], segments=12, mirror_x=True,
     )
 
-    # Outer Bi-LED Adaptive Matrix Projector Module (L/R)
-    px, py, pz = _headlight_outline_point(0.72, 0.48)
+    # Separate the convex lens, its retaining ring and the recessed source.
+    # Axial positions are relative to the front of the projector barrel.
+    px, py, pz = _headlight_outline_point(0.74, 0.49)
+    bezel_profile = [
+        (0.021, -0.028), (0.024, -0.028), (0.024, -0.002),
+        (0.022, 0.0), (0.0185, 0.0), (0.018, -0.002),
+    ]
+    lens_profile = [
+        (0.0, 0.0053), (0.004, 0.0051), (0.008, 0.0045),
+        (0.012, 0.0035), (0.016, 0.0018), (0.0186, -0.0002),
+    ]
+    emitter_profile = [(0.0, -0.017), (0.012, -0.017), (0.0187, -0.013)]
     for sign, sfx in [(1.0, "R"), (-1.0, "L")]:
-        bpy.ops.mesh.primitive_cylinder_add(
-            vertices=28, radius=0.025, depth=0.046,
-            location=(sign * (px - 0.015), py - 0.048, pz)
-        )
-        shroud = bpy.context.active_object
-        shroud.name = f"Light_Headlight_ProjectorShroud_{sfx}"
-        shroud.rotation_euler = (math.radians(90), 0.0, sign * math.radians(-16))
-        link_object(shroud, col)
-        shroud.data.materials.append(mats["light_housing"])
-
-        bpy.ops.mesh.primitive_uv_sphere_add(
-            segments=24, ring_count=16, radius=0.020,
-            location=(sign * (px - 0.013), py - 0.031, pz)
-        )
-        dome = bpy.context.active_object
-        dome.name = f"Light_Headlight_MatrixProjector_{sfx}"
-        dome.scale = (1.0, 0.65, 1.0)
-        link_object(dome, col)
-        dome.data.materials.append(mats["led_projector"])
+        axis = Vector((sign * 0.22, 1.0, 0.02))
+        for name, profile, material, closed in (
+            ("ProjectorShroud", bezel_profile, "light_housing", True),
+            ("MatrixProjectorLens", lens_profile, "lens_clear", False),
+            ("MatrixProjectorEmitter", emitter_profile, "led_projector", False),
+        ):
+            component = create_revolved_mesh(
+                f"Light_Headlight_{name}_{sfx}", profile, col, mats[material],
+                segments=40, axis="Z", close_profile=closed,
+            )
+            component.location = (sign * (px - 0.013), py - 0.025, pz)
+            component.rotation_euler = axis.to_track_quat("Z", "Y").to_euler()
 
     # Inner Multi-Chamber Faceted Chrome Reflector Array (matching 2023_Tesla_Model_S_Plaid.jpg!)
     g_ref = np.zeros((10, 18, 3), dtype=np.float64)
