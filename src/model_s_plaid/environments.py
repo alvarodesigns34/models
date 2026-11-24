@@ -330,16 +330,21 @@ def setup_environment(mode="studio"):
 
 
 def configure_cycles_render(res_x=960, res_y=540, samples=40, use_agx=True):
-    """Configure Blender 4.2 Cycles CPU + OpenImageDenoise + AgX Punchy color management."""
+    """Configure Cycles CPU with AgX and denoise when the Blender build supports it."""
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
     scene.cycles.samples = samples
     scene.cycles.use_adaptive_sampling = True
     scene.cycles.adaptive_threshold = 0.022 if samples <= 64 else 0.012
-    scene.cycles.use_denoising = True
-    scene.cycles.denoiser = "OPENIMAGEDENOISE"
-    scene.cycles.denoising_input_passes = "RGB_ALBEDO_NORMAL"
+    try:
+        scene.cycles.denoiser = "OPENIMAGEDENOISE"
+    except TypeError:
+        scene.cycles.use_denoising = False
+        print("Cycles: this Blender build has no CPU denoiser; rendering raw samples.")
+    else:
+        scene.cycles.use_denoising = True
+        scene.cycles.denoising_input_passes = "RGB_ALBEDO_NORMAL"
     scene.cycles.max_bounces = 6
     scene.cycles.diffuse_bounces = 3
     scene.cycles.glossy_bounces = 4
