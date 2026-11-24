@@ -450,6 +450,42 @@ def build_hood(col, mats):
 # ==============================================================================
 # 2. FRONT BUMPER (Predatory 2024 Plaid Fascia + Exact Headlight/Arch Lock!)
 # ==============================================================================
+def _build_front_grille(mouth, col, mats):
+    """Build the return, recessed louvers and dark cavity from the cut edge."""
+    rim = np.concatenate((mouth[0, :], mouth[1:, -1], mouth[-1, -2::-1]))
+    inner_rim = rim.copy()
+    inner_rim[:, 1] -= 0.033
+    # Enlarge the back of the duct so the rolled painted lip stays visible
+    # and the backing still covers the aperture at an oblique viewing angle.
+    inner_rim[:, 0] *= 1.045
+    inner_rim[:, 2] = 0.236 + (inner_rim[:, 2] - 0.236) * 1.12
+    rim[:, 1] -= 0.002
+    create_grid_surface(
+        "Trim_Front_Grille_Return", (rim, inner_rim), col, mats["trim_matte_plastic"],
+        mirror_x=True, flip_normals=True,
+    )
+
+    backing = mouth[[0, -1]].copy()
+    backing[:, :, 0] *= 1.15
+    backing[:, :, 1] -= 0.087
+    backing[:, :, 2] = 0.236 + (backing[:, :, 2] - 0.236) * 1.40
+    create_grid_surface(
+        "Trim_Front_Grille_Backing", backing, col, mats["trim_matte_plastic"],
+        mirror_x=True, flip_normals=True,
+    )
+
+    # Louvers follow the local bumper curvature and remain behind the lip.
+    profile = np.array([
+        (0.0, -0.025, 0.0026), (0.0, -0.026, -0.0026),
+        (0.0, -0.064, -0.0008), (0.0, -0.064, 0.0028),
+    ])
+    for index, row in enumerate(mouth[2:-1:2]):
+        create_grid_surface(
+            f"Trim_Front_Grille_Slat_{index}", row[:, None, :] + profile[None, :, :],
+            col, mats["trim_matte_plastic"], close_v=True, mirror_x=True,
+        )
+
+
 def build_front_bumper(col, mats):
     """
     Wrap-around 2024 Model S Plaid front bumper:
@@ -526,13 +562,6 @@ def build_front_bumper(col, mats):
             must_v = 1.0 - smootherstep(0.04, 0.12, v)
             y -= 0.022 * must_u * must_v
 
-            # 2. Wide Trapezoidal Lower Center Grille Opening (x < 0.515, z in [0.168, 0.302])
-            z_norm = (z - 0.168) / (0.302 - 0.168)
-            x_grille_lim = 0.516 - 0.056 * np.clip(z_norm, 0.0, 1.0)
-            g_x = 1.0 - smootherstep(x_grille_lim - 0.022, x_grille_lim + 0.014, x)
-            g_z = smootherstep(0.162, 0.184, z) * (1.0 - smootherstep(0.288, 0.312, z))
-            y -= 0.088 * g_x * g_z
-
             # 3. Clean Single Concave Outer Air-Curtain Cheek Bay + Slim Fog Wedge Pocket (matching 1X7A0025!)
             # Crisp upper wedge ledge at z ~ 0.318..0.336 holding flush dark smoked fog lamp!
             fog_x = smootherstep(0.545, 0.605, x) * (1.0 - smootherstep(0.848, 0.875, x))
@@ -557,55 +586,22 @@ def build_front_bumper(col, mats):
 
             grid[j, i] = (x, y, z)
 
+    # Cut the lower grille out of the bumper lattice. The opening and the
+    # grille share one edge, including its rake around the front corners.
+    top, bottom, side = 25, 36, 21
+    for row in (top, bottom):
+        grid[row, side, 0] -= 0.012
+    grid[top, side - 1:side + 1, 2] -= (0.003, 0.010)
+    grid[bottom, side - 1:side + 1, 2] += (0.003, 0.010)
+    faces = np.ones((nv - 1, nu - 1), dtype=bool)
+    faces[top:bottom, :side] = False
+    mouth = grid[top:bottom + 1, :side + 1]
     bumper = create_grid_surface(
         "Body_Front_Bumper", grid, col, material=mats["paint"],
-        mirror_x=True, flip_normals=True,
+        mirror_x=True, flip_normals=True, face_mask=faces,
         add_flange=True, flange_depth=0.014, flange_bevel=0.002
     )
-
-    # Lower Center Grille Dark Backing + 4 Horizontal Gloss-Black Louver Slats
-    gg = np.zeros((10, 24, 3), dtype=np.float64)
-    for j, tz in enumerate(np.linspace(0.0, 1.0, 10)):
-        z = 0.168 + tz * (0.302 - 0.168)
-        xw = 0.518 - 0.056 * tz
-        for i, tx in enumerate(np.linspace(0.0, 1.0, 24)):
-            x = tx * xw
-            y = 2.345 - 0.075 * (tx ** 2.0)
-            gg[j, i] = (x, y, z)
-    create_grid_surface("Trim_Front_Grille_Backing", gg, col, material=mats["trim_matte_plastic"], mirror_x=True, flip_normals=True)
-
-    for idx, z_slat in enumerate([0.190, 0.220, 0.250, 0.280]):
-        xw = 0.506 - 0.050 * (idx / 3.0)
-        bm = bmesh.new()
-        nx_s = 20
-        rings = []
-        for i in range(nx_s):
-            tx = i / (nx_s - 1)
-            x = tx * xw
-            y_front = 2.402 - 0.088 * (tx ** 2.0)
-            y_back = y_front - 0.032
-            h = 0.0042
-            rings.append([
-                bm.verts.new((x, y_front, z_slat + h)),
-                bm.verts.new((x, y_front, z_slat - h)),
-                bm.verts.new((x, y_back, z_slat - h)),
-                bm.verts.new((x, y_back, z_slat + h)),
-            ])
-        for i in range(nx_s - 1):
-            r0, r1 = rings[i], rings[i + 1]
-            for k in range(4):
-                kn = (k + 1) % 4
-                bm.faces.new((r0[k], r1[k], r1[kn], r0[kn]))
-        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-        mesh = bpy.data.meshes.new(f"Trim_Front_Grille_Slat_{idx}")
-        bm.to_mesh(mesh)
-        bm.free()
-        set_smooth_shading(mesh)
-        slat_obj = bpy.data.objects.new(f"Trim_Front_Grille_Slat_{idx}", mesh)
-        link_object(slat_obj, col)
-        slat_obj.data.materials.append(mats["trim_gloss_black"])
-        mod = slat_obj.modifiers.new("MirrorX", "MIRROR")
-        mod.use_axis = (True, False, False)
+    _build_front_grille(mouth, col, mats)
 
     # Gloss-Black Smiling Upper Mustache Garnish Bar (holding Chrome T-Badge!)
     nm = 26

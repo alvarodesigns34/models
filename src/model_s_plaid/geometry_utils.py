@@ -167,9 +167,11 @@ def create_mesh_object(name, verts, faces, collection, material=None, uvs=None, 
 def create_grid_surface(name, grid_pts, collection, material=None,
                         close_u=False, close_v=False, mirror_x=False,
                         flip_normals=False, uv_scale=(1.0, 1.0),
-                        add_flange=False, flange_depth=0.012, flange_bevel=0.002):
+                        add_flange=False, flange_depth=0.012, flange_bevel=0.002,
+                        face_mask=None):
     """
     Build a clean all-quad mesh from a 2D array grid_pts of shape (NU, NV, 3).
+    A false entry in face_mask omits the quad beginning at that grid index.
     Optionally adds rolled automotive panel flanges along open boundary edges
     so shutlines have true physical depth and specular edge catch-lights!
     """
@@ -188,10 +190,11 @@ def create_grid_surface(name, grid_pts, collection, material=None,
 
     uv_layer = bm.loops.layers.uv.new("UVMap")
 
-    main_faces = []
     for i in range(u_max):
         i_next = (i + 1) % nu
         for j in range(v_max):
+            if face_mask is not None and not face_mask[i, j]:
+                continue
             j_next = (j + 1) % nv
             v0 = bm_verts[i][j]
             v1 = bm_verts[i_next][j]
@@ -205,7 +208,6 @@ def create_grid_surface(name, grid_pts, collection, material=None,
                     f = bm.faces.new((v0, v3, v2, v1))
                 else:
                     f = bm.faces.new((v0, v1, v2, v3))
-                main_faces.append(f)
                 # Assign clean parametric UVs
                 u0 = (i / max(nu - 1, 1)) * uv_scale[0]
                 u1 = ((i + 1) / max(nu - 1, 1)) * uv_scale[0]
@@ -217,6 +219,8 @@ def create_grid_surface(name, grid_pts, collection, material=None,
             except ValueError:
                 pass
 
+    if face_mask is not None:
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
     bm.normal_update()
 
     # Optional automotive rolled edge flange on open boundaries
