@@ -168,12 +168,13 @@ def create_grid_surface(name, grid_pts, collection, material=None,
                         close_u=False, close_v=False, mirror_x=False,
                         flip_normals=False, uv_scale=(1.0, 1.0),
                         add_flange=False, flange_depth=0.012, flange_bevel=0.002,
-                        face_mask=None):
+                        face_mask=None, flange_exclude=()):
     """
     Build a clean all-quad mesh from a 2D array grid_pts of shape (NU, NV, 3).
     A false entry in face_mask omits the quad beginning at that grid index.
     Optionally adds rolled automotive panel flanges along open boundary edges
     so shutlines have true physical depth and specular edge catch-lights!
+    Edges joining two lattice vertices listed in flange_exclude stay unflanged.
     """
     pts = np.asarray(grid_pts, dtype=np.float64)
     nu, nv, _ = pts.shape
@@ -226,7 +227,10 @@ def create_grid_surface(name, grid_pts, collection, material=None,
     # Optional automotive rolled edge flange on open boundaries
     if add_flange:
         bm.edges.ensure_lookup_table()
-        boundary_edges = [e for e in bm.edges if e.is_boundary]
+        excluded = {bm_verts[i][j] for i, j in flange_exclude}
+        boundary_edges = [
+            e for e in bm.edges if e.is_boundary and not all(v in excluded for v in e.verts)
+        ]
         if mirror_x:
             # Do NOT extrude flange along the X=0 mirror symmetry centerline!
             boundary_edges = [

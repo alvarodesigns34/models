@@ -16,9 +16,10 @@ import numpy as np
 import bpy
 import bmesh
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 
 from . import config as C
-from .body_master import BodyCurves
+from .body_master import BodyCurves, eval_front_garnish_upper
 from .geometry_utils import (
     ensure_collection,
     create_grid_surface,
@@ -144,13 +145,17 @@ def build_micro_body_seams(col, mats):
     # Located on driver-left side of front bumper (X = -0.365, Z = 0.415, diameter ~52 mm)
     pts = []
     cx, cz, rad = -0.365, 0.415, 0.025
+    bumper = bpy.data.objects["Body_Front_Bumper"]
+    bpy.context.view_layer.update()
+    surface = BVHTree.FromObject(bumper, bpy.context.evaluated_depsgraph_get())
     for k in range(25):
         ang = 2.0 * math.pi * k / 24.0
         px = cx + rad * math.cos(ang)
         pz = cz + rad * math.sin(ang)
-        # Follow exact front bumper outer skin curve cleanly
-        py = 2.388 - 0.125 * ((abs(px) / 0.946) ** 1.85) + 0.028 * math.sin(((0.58 - pz) / 0.44) * math.pi)
-        pts.append((px, py - 0.001, pz))
+        point, normal, _, _ = surface.ray_cast((px, 3.0, pz), (0.0, -1.0, 0.0))
+        if point is None:
+            raise ValueError("Tow-eye cover lies outside the front bumper")
+        pts.append(point + normal * 0.0003)
     create_tube_along_points(
         "Detail_FrontBumper_TowEyeSeam", pts, 0.0014, col,
         material=mats["shadow_gap"], segments=6, cap_ends=False
@@ -240,9 +245,10 @@ def build_side_repeater_cameras(col, mats):
 def build_front_t_emblem(col, mats):
     """Build true sculpted 3D chrome Tesla 'T' emblem nested in the Iter 3 front mustache V-notch."""
     bm = bmesh.new()
-    y0 = 2.397
-    z0 = 0.576
-    thick = 0.0075
+    _, y0, z0 = eval_front_garnish_upper(0.0)
+    y0 += 0.006
+    z0 -= 0.023
+    thick = 0.0038
 
     # 1. Upper curved Tesla crest bar (sweeping gently down at ends)
     n_arc = 14

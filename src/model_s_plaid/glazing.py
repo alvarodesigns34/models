@@ -33,11 +33,7 @@ def _eval_top_glass_surface(y_start, y_end, nu=32, nv=24, z_offset=-0.002):
             # Smooth automotive cylindrical-spherical glass curvature
             z = zc + (ze - zc) * (u ** 1.92) + z_offset
             # Windshield base curves slightly forward at center in plan view
-            y_adj = y
-            if y > 0.72:
-                tf = (y - 0.72) / (0.955 - 0.72)
-                y_adj = y - 0.055 * (u ** 2.1) * tf
-            grid[j, i] = (x, y_adj, z)
+            grid[j, i] = (x, BodyCurves.windshield_plan_y(y, u), z)
     return grid
 
 

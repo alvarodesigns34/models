@@ -370,7 +370,8 @@ def configure_cycles_render(res_x=960, res_y=540, samples=40, use_agx=True):
     scene.view_settings.gamma = 1.0
 
 
-def set_camera(name, location, target, lens_mm=50.0, ortho=False, ortho_scale=6.0, fstop=4.0, dof=False):
+def set_camera(name, location, target, lens_mm=50.0, ortho=False, ortho_scale=6.0,
+               fstop=4.0, dof=False, shift=(0.0, 0.0), roll=0.0):
     """Create or update a photographic camera aimed cleanly at target."""
     if name in bpy.data.objects:
         cam_obj = bpy.data.objects[name]
@@ -384,10 +385,12 @@ def set_camera(name, location, target, lens_mm=50.0, ortho=False, ortho_scale=6.
     cam_obj.location = Vector(location)
     direction = Vector(target) - Vector(location)
     cam_obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
+    cam_obj.rotation_euler.rotate_axis("Z", roll)
 
     cam_data.type = "ORTHO" if ortho else "PERSP"
     cam_data.lens = lens_mm
     cam_data.sensor_width = 36.0
+    cam_data.shift_x, cam_data.shift_y = shift
     cam_data.ortho_scale = ortho_scale
     cam_data.clip_start = 0.05
     cam_data.clip_end = 250.0
@@ -414,4 +417,14 @@ CAMERA_PRESETS = {
     "closeup_rear_detail": {"loc": (0.95, -3.75, 0.88), "tgt": (0.35, -2.48, 0.78), "lens": 68.0},
     "interior_cockpit":  {"loc": (0.28, -0.68, 1.12), "tgt": (-0.22, 0.45, 0.76), "lens": 26.0},
     "interior_seats":    {"loc": (-0.72, 0.15, 1.06), "tgt": (0.20, -0.35, 0.78), "lens": 28.0},
+    # Approximate camera fits to the wheel centers, rim extents and nose badge
+    # in the repository photos. Use the original image aspect ratios.
+    "ref_2024_blue": {
+        "loc": (-7.6846, 7.6204, 1.6256), "tgt": (0.0, 0.0, 0.63), "lens": 77.2779,
+        "shift": (-0.0739297, 0.0127098), "roll": 0.0253122,
+    },
+    "ref_ulm_front": {
+        "loc": (4.8763, 9.6742, 2.1974), "tgt": (0.0, 0.0, 0.63), "lens": 106.1894,
+        "shift": (0.0538522, -0.0097078), "roll": -0.0371923,
+    },
 }

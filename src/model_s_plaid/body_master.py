@@ -38,8 +38,8 @@ class BodyCurves:
     """Master 3D parametric curve definitions for the 2024 Tesla Model S Plaid."""
 
     # 1. Centerline Upper Silhouette (sleek planted Model S Plaid nose!)
-    HOOD_Y = np.array([0.955, 1.18, 1.48, 1.82, 2.12, 2.29, 2.390])
-    HOOD_Z = np.array([0.888, 0.848, 0.785, 0.718, 0.658, 0.620, 0.596])
+    HOOD_Y = np.array([0.955, 1.18, 1.48, 1.82, 2.12, 2.29, 2.399])
+    HOOD_Z = np.array([0.888, 0.870, 0.826, 0.775, 0.709, 0.665, 0.631])
 
     ROOF_Y = np.array([
         -2.475, -2.35, -2.14, -1.90, -1.55, -1.10, -0.68, -0.18, 0.11, 0.42, 0.72, 0.955
@@ -74,7 +74,7 @@ class BodyCurves:
         -2.46, -2.22, -1.88, -1.48, -1.05, -0.60, -0.22, 0.25, 0.87, 1.18, 1.48, 1.82, 2.08, 2.26
     ])
     BELT_X = np.array([
-        0.695,  0.840, 0.912, 0.905, 0.888, 0.888, 0.886, 0.880, 0.865, 0.892, 0.916, 0.886, 0.815, 0.695
+        0.695,  0.840, 0.912, 0.905, 0.888, 0.888, 0.886, 0.880, 0.865, 0.892, 0.926, 0.936, 0.861, 0.734
     ])
     BELT_Z = np.array([
         0.955,  0.968, 1.005, 1.038, 0.992, 0.955, 0.935, 0.915, 0.902, 0.862, 0.828, 0.768, 0.700, 0.635
@@ -85,22 +85,16 @@ class BodyCurves:
         -2.46, -2.26, -1.92, -1.48, -1.05, -0.60, -0.20, 0.35, 0.90, 1.18, 1.48, 1.84, 2.15, 2.34
     ])
     FLANK_X = np.array([
-        0.745,  0.882, 0.960, 0.9865, 0.968, 0.948, 0.942, 0.938, 0.946, 0.962, 0.972, 0.944, 0.862, 0.715
+        0.745,  0.882, 0.960, 0.9865, 0.968, 0.948, 0.942, 0.938, 0.946, 0.962, 0.972, 0.965, 0.878, 0.715
     ])
     FLANK_Z = np.array([
         0.680,  0.675, 0.675, 0.665,  0.640, 0.625, 0.612, 0.605, 0.618, 0.625, 0.625, 0.585, 0.525, 0.470
     ])
 
     # 4. Signature Model S Lower Door Kick-Up Character Crease
-    CREASE_Y = np.array([
-        -2.35, -1.90, -1.48, -1.06, -0.65, -0.20, 0.35, 0.94, 1.48, 1.92, 2.28
-    ])
-    CREASE_X = np.array([
-        0.720,  0.882, 0.952, 0.942, 0.932, 0.926, 0.924, 0.926, 0.940, 0.910, 0.740
-    ])
-    CREASE_Z = np.array([
-        0.340,  0.345, 0.365, 0.365, 0.332, 0.296, 0.268, 0.242, 0.238, 0.232, 0.218
-    ])
+    CREASE_Y = np.array([-2.35, -1.90, -1.48, -1.06, -0.88, -0.68, -0.20, 0.35, 0.94, 1.48, 1.92, 2.28])
+    CREASE_X = np.array([0.720, 0.882, 0.952, 0.947, 0.945, 0.939, 0.926, 0.918, 0.913, 0.940, 0.910, 0.740])
+    CREASE_Z = np.array([0.340, 0.345, 0.365, 0.408, 0.432, 0.442, 0.404, 0.361, 0.321, 0.249, 0.232, 0.218])
 
     # 5. Lower Rocker / Sill Outer Bottom Edge
     SILL_Y = np.array([
@@ -113,10 +107,10 @@ class BodyCurves:
         0.195,  0.158, 0.132, 0.126, 0.122, 0.124, 0.130, 0.142, 0.148
     ])
 
-    # 6. Hood Outer Shutline (calibrated to lock 0.0 mm to eval_headlight_upper_rim!)
-    HOOD_EDGE_Y = np.array([0.955, 1.18, 1.48, 1.78, 2.065, 2.180, 2.268])
-    HOOD_EDGE_X = np.array([0.772, 0.785, 0.782, 0.755, 0.653, 0.526, 0.398])
-    HOOD_EDGE_Z = np.array([0.896, 0.858, 0.812, 0.758, 0.698, 0.656, 0.598])
+    # Hood side profile aft of the headlamp brow.
+    HOOD_EDGE_Y = (0.906, 0.955, 1.18, 1.48, 1.78)
+    HOOD_EDGE_X = (0.774, 0.778, 0.792, 0.798, 0.760)
+    HOOD_EDGE_Z = (0.898, 0.910, 0.870, 0.834, 0.791)
 
     @classmethod
     def roof_center_z(cls, y):
@@ -137,6 +131,11 @@ class BodyCurves:
         x = pchip_interpolate(cls.CANTRAIL_Y, cls.CANTRAIL_X, y)
         z = pchip_interpolate(cls.CANTRAIL_Y, cls.CANTRAIL_Z, y)
         return x, z
+
+    @staticmethod
+    def windshield_plan_y(y, u):
+        """Setback at the sides of the cowl and windshield base."""
+        return y - 0.055 * (u ** 2.1) * smootherstep(0.72, 0.955, y)
 
     @classmethod
     def beltline(cls, y):
@@ -164,8 +163,9 @@ class BodyCurves:
 
     @classmethod
     def hood_edge(cls, y):
-        x = pchip_interpolate(cls.HOOD_EDGE_Y, cls.HOOD_EDGE_X, y)
-        z = pchip_interpolate(cls.HOOD_EDGE_Y, cls.HOOD_EDGE_Z, y)
+        x_tip, y_tip, z_tip = eval_headlight_upper_rim(HOOD_LAMP_DIVIDE)
+        x = pchip_interpolate((*cls.HOOD_EDGE_Y, y_tip), (*cls.HOOD_EDGE_X, x_tip), y)
+        z = pchip_interpolate((*cls.HOOD_EDGE_Y, y_tip), (*cls.HOOD_EDGE_Z, z_tip), y)
         return x, z
 
     @classmethod
@@ -176,8 +176,8 @@ class BodyCurves:
         xs, zs = cls.sill_edge(y)
 
         door_zone = smootherstep(-1.12, -0.82, y) * (1.0 - smootherstep(0.82, 1.15, y))
-        valley_in = 0.022 * door_zone
-        ridge_out = 0.010 * door_zone
+        valley_in = 0.014 * door_zone
+        ridge_out = 0.007 * door_zone
         haunch_zone = math.exp(-((y + 1.48) / 0.55) ** 2)
         shoulder_x = xm + 0.005 * haunch_zone
 
@@ -214,8 +214,8 @@ class BodyCurves:
         xs, zs = cls.sill_edge(y)
 
         door_zone = smootherstep(-1.12, -0.82, y) * (1.0 - smootherstep(0.82, 1.15, y))
-        valley_in = 0.022 * door_zone
-        ridge_out = 0.010 * door_zone
+        valley_in = 0.014 * door_zone
+        ridge_out = 0.007 * door_zone
         haunch_zone = math.exp(-((y + 1.48) / 0.55) ** 2)
         shoulder_x = xm + 0.005 * haunch_zone
 
@@ -249,37 +249,45 @@ class BodyCurves:
 # SHARED 0.0 mm ANALYTICAL SEAM & PERIMETER FUNCTIONS
 # ==============================================================================
 
-# 1. Shared Headlight Outer/Inner Perimeter (used identically by Bumper, Hood, Fender & Lighting!)
-HL_OUTER_Y = 1.855
-HL_OUTER_Z = 0.662
-HL_OUTER_X = BodyCurves.eval_flank_x_at_yz(HL_OUTER_Y, HL_OUTER_Z)  # ~0.916 m (flush on fender!)
+# The near-side headlamp was traced in the axle-aligned 2024 photo. These
+# physical stations retain a broad outboard brow and a fast-rising lower edge.
+_LAMP_X = np.array((0.470, 0.555, 0.655, 0.755, 0.854, 0.928, 0.966))
+_LAMP_Y_UPPER = np.array((2.305, 2.240, 2.151, 2.074, 1.977, 1.911, 1.883))
+_LAMP_Z_UPPER = np.array((0.630, 0.678, 0.724, 0.749, 0.757, 0.763, 0.766))
+_LAMP_Y_LOWER = np.array((2.305, 2.245, 2.187, 2.128, 2.074, 2.000, 1.883))
+_LAMP_Z_LOWER = np.array((0.621, 0.599, 0.605, 0.602, 0.633, 0.690, 0.766))
+HL_OUTER_X, HL_OUTER_Y, HL_OUTER_Z = _LAMP_X[-1], _LAMP_Y_UPPER[-1], _LAMP_Z_UPPER[-1]
+HOOD_LAMP_DIVIDE = 0.50
 
 
 def eval_headlight_lower_rim(u):
-    """Exact lower rim of Matrix LED headlight (u=0 inner mustache tip -> u=1 outer fender corner)."""
-    u = max(0.0, min(1.0, float(u)))
-    x = 0.398 + (HL_OUTER_X - 0.398) * u
-    y = 2.268 - (2.268 - HL_OUTER_Y) * (u ** 1.12)
-    z = 0.586 + (HL_OUTER_Z - 0.586) * (u ** 1.20) - 0.012 * math.sin(u * math.pi)
-    return x, y, z
+    x = _LAMP_X[0] + (_LAMP_X[-1] - _LAMP_X[0]) * float(u)
+    return x, pchip_interpolate(_LAMP_X, _LAMP_Y_LOWER, x), pchip_interpolate(_LAMP_X, _LAMP_Z_LOWER, x)
 
 
 def eval_headlight_upper_rim(u):
-    """Exact upper brow of Matrix LED headlight locking 0.0 mm to Hood (u<=0.5) & Fender (u>=0.5)."""
-    u = max(0.0, min(1.0, float(u)))
-    x_lo, y_lo, z_lo = eval_headlight_lower_rim(u)
-    x = 0.398 + (HL_OUTER_X - 0.398) * (u ** 0.98)
-    y = 2.266 - (2.266 - HL_OUTER_Y) * (u ** 1.13)
-    arch = 0.082 * (math.sin(u * math.pi) ** 1.15)
-    inner_height = 0.010 * (1.0 - 0.20 * u) * (1.0 - smootherstep(0.78, 1.0, u))
-    z = z_lo + inner_height + arch
-    return x, y, z
+    x = _LAMP_X[0] + (_LAMP_X[-1] - _LAMP_X[0]) * float(u)
+    return x, pchip_interpolate(_LAMP_X, _LAMP_Y_UPPER, x), pchip_interpolate(_LAMP_X, _LAMP_Z_UPPER, x)
 
 
-# 2. Front Bumper <-> Front Fender Seam (outer headlight corner -> front wheel arch at phi=+28 deg)
-FRONT_ARCH_SEAM_PHI = math.radians(28.0)
-FRONT_SEAM_Y_ARCH = C.Y_FRONT_AXLE + C.FRONT_ARCH_RAD * math.cos(FRONT_ARCH_SEAM_PHI)  # ~1.831
-FRONT_SEAM_Z_ARCH = C.FRONT_WHEEL_Z + C.FRONT_ARCH_RAD * math.sin(FRONT_ARCH_SEAM_PHI)  # ~0.539
+def eval_front_garnish_upper(t):
+    """Hood edge at the black badge panel from centerline to inner lamp."""
+    inner_x, inner_y, inner_z = eval_headlight_upper_rim(0.0)
+    return inner_x * t, 2.399 + (inner_y - 2.399) * t ** 1.65, 0.631 + (inner_z - 0.631) * t
+
+
+def eval_front_garnish_lower(t):
+    """The slim lateral blade deepens into a V at the central emblem."""
+    x, y, z = eval_front_garnish_upper(t)
+    height = 0.009 + 0.016 * (1.0 - t) + 0.042 * math.exp(-((x / 0.068) ** 2))
+    return x, y, z - height
+
+
+# The bumper break intersects the arch high enough to follow the reference.
+FRONT_ARCH_SEAM_PHI = math.radians(43.0)
+FRONT_SEAM_Y_ARCH = C.Y_FRONT_AXLE + C.FRONT_ARCH_RAD * math.cos(FRONT_ARCH_SEAM_PHI)
+FRONT_SEAM_Z_ARCH = C.FRONT_WHEEL_Z + C.FRONT_ARCH_RAD * math.sin(FRONT_ARCH_SEAM_PHI)
+_FRONT_TIP_X_OFFSET = HL_OUTER_X - BodyCurves.eval_flank_x_at_yz(HL_OUTER_Y, HL_OUTER_Z)
 
 
 def eval_front_fender_bumper_join(t):
@@ -287,7 +295,8 @@ def eval_front_fender_bumper_join(t):
     y = FRONT_SEAM_Y_ARCH + (HL_OUTER_Y - FRONT_SEAM_Y_ARCH) * t
     z = FRONT_SEAM_Z_ARCH + (HL_OUTER_Z - FRONT_SEAM_Z_ARCH) * t
     flare = 0.005 * math.exp(-((t / 0.22) ** 2)) * (1.0 - smootherstep(0.80, 1.0, t))
-    return BodyCurves.eval_flank_x_at_yz(y, z) + flare, y, z
+    x = BodyCurves.eval_flank_x_at_yz(y, z) + flare + _FRONT_TIP_X_OFFSET * smootherstep(0.2, 1.0, t)
+    return x, y, z
 
 # 3. Rear Bumper <-> Rear Quarter Unified C2 Cubic-Bezier Surface!
 REAR_ARCH_SEAM_PHI = math.radians(150.0)
@@ -420,35 +429,50 @@ def build_master_rear_haunch_clay(col):
 # 1. HOOD (Sculpted Clamshell with Twin Power-Dome Character Creases)
 # ==============================================================================
 def build_hood(col, mats):
-    nu, nv = 40, 48
-    us = np.linspace(0.0, 1.0, nu)
+    """Blend the hood from the cowl, shared shutline and headlamp brow."""
+    nu, nv = 57, 48
+    nose_split = 0.63
+    us = np.sort(np.append(np.linspace(0.0, 1.0, nu), nose_split))
     vs = np.linspace(0.0, 1.0, nv)
+    grid = np.zeros((nv, len(us), 3), dtype=np.float64)
 
-    grid = np.zeros((nv, nu, 3), dtype=np.float64)
+    def rear(u):
+        return np.array((BodyCurves.HOOD_EDGE_X[0] * u, 0.955 - 0.049 * u * u,
+                         BodyCurves.hood_center_z(0.955) + 0.010 * u * u))
+
+    def front(u):
+        if u <= nose_split:
+            return np.array(eval_front_garnish_upper(u / nose_split))
+        lamp = HOOD_LAMP_DIVIDE * (u - nose_split) / (1.0 - nose_split)
+        return np.array(eval_headlight_upper_rim(lamp))
+
+    rear_center, rear_side = rear(0.0), rear(1.0)
+    front_center, front_side = front(0.0), front(1.0)
     for j, v in enumerate(vs):
+        center_y = rear_center[1] + (front_center[1] - rear_center[1]) * v
+        center = np.array((0.0, center_y, BodyCurves.hood_center_z(center_y)))
+        side_y = rear_side[1] + (front_side[1] - rear_side[1]) * v
+        side_x, side_z = BodyCurves.hood_edge(side_y)
+        side = np.array((side_x, side_y, side_z))
+        rear_edge = rear_center * (1 - v) + front_center * v
+        side_edge = rear_side * (1 - v) + front_side * v
+
         for i, u in enumerate(us):
-            y_front_u = 2.388 - 0.120 * (u ** 2.08)
-            y_cowl_u = 0.956 - 0.050 * (u ** 2.1)
-            y = y_cowl_u + v * (y_front_u - y_cowl_u)
+            p = rear(u) * (1 - v) + front(u) * v
+            p += (center - rear_edge) * (1 - u * u) + (side - side_edge) * u * u
+            # The shoulders are soft, with the stamped high point fading into
+            # the exact shared edges of the bonnet.
+            p[2] += 0.012 * math.sin(math.pi * v) * math.sin(math.pi * u) ** 2
+            grid[j, i] = p
 
-            x_edge, z_edge = BodyCurves.hood_edge(min(y, 2.268))
-            if y > 2.268:
-                t_tip = min(1.0, (y - 2.268) / (2.388 - 2.268))
-                x_edge = 0.398 * math.sqrt(max(1.0 - t_tip * t_tip, 0.0))
-                z_edge = BodyCurves.hood_center_z(y) - 0.003 * (1.0 - t_tip)
+    backing = grid.copy()
+    backing[:, :, 0] *= 0.99
+    backing[:, :, 2] -= 0.021
+    create_grid_surface(
+        "Body_Shadow_Gap_Hood", backing, col, material=mats["shadow_gap"],
+        mirror_x=True, flip_normals=True,
+    )
 
-            x = u * x_edge
-            z_center = BodyCurves.hood_center_z(y)
-            crown = (z_edge - z_center) * (u ** 1.85)
-            ridge_env_v = math.sin(v * math.pi) ** 0.75 * (1.0 - 0.25 * smootherstep(0.75, 1.0, v))
-            dome = 0.015 * ridge_env_v * math.exp(-((u - 0.56) / 0.24) ** 2)
-            center_lift = 0.009 * math.sin(v * math.pi) * (1.0 - u * u)
-            nose_roll = -0.005 * smootherstep(0.92, 1.0, v)
-
-            z = z_center + crown + dome + center_lift + nose_roll
-            grid[j, i] = (x, y, z)
-
-    # flip_normals=True -> verified upward (+Z, +Y) outward normals!
     return create_grid_surface(
         "Body_Hood", grid, col, material=mats["paint"],
         mirror_x=True, flip_normals=True,
@@ -504,10 +528,13 @@ def build_front_bumper(col, mats):
       - Crisp Plaid lower chin blade, wide trapezoidal grille w/ louvers, and sculpted single
         concave lower cheek air-curtain intake sitting cleanly under flush smoked fog light wedge!
     """
-    nu, nv = 64, 40
-    us = np.linspace(0.0, 1.0, nu)
+    nv = 40
     lamp_tip = 0.84
-    us[np.abs(us - lamp_tip).argmin()] = lamp_tip
+    base_columns = np.linspace(0.0, 1.0, 64)
+    us = np.concatenate((base_columns[base_columns < lamp_tip], np.linspace(lamp_tip, 1.0, 29)))
+    nu = len(us)
+    grille_top, grille_bottom, grille_side = 25, 36, 21
+    arch_join_x, arch_join_y, arch_join_z = eval_front_fender_bumper_join(0.0)
     vs = np.linspace(0.0, 1.0, nv)
 
     grid = np.zeros((nv, nu, 3), dtype=np.float64)
@@ -517,14 +544,12 @@ def build_front_bumper(col, mats):
         ca, sa = math.cos(ang), math.sin(ang)
 
         x_nose = 0.946 * (sa ** 0.85)
-        y_nose = 1.855 + (C.Y_FRONT_TIP - 0.014 - 1.855) * (ca ** 0.72)
+        y_nose = 1.855 + (C.Y_FRONT_TIP - 0.014 - 1.855) * (ca ** 0.63)
 
         # Top edge locked 0.0 mm to Mustache, Headlight Lower Rim, and Front Fender Seam!
         if u < 0.34:
             t_m = u / 0.34
-            x_top = 0.398 * t_m
-            y_top = 2.388 - 0.120 * (t_m ** 1.85)
-            z_top = 0.594 - 0.008 * (t_m ** 1.5)
+            x_top, y_top, z_top = eval_front_garnish_lower(t_m)
         elif u <= lamp_tip:
             t_h = (u - 0.34) / (lamp_tip - 0.34)
             x_top, y_top, z_top = eval_headlight_lower_rim(t_h)
@@ -536,18 +561,29 @@ def build_front_bumper(col, mats):
         y_bot = y_nose - 0.012 * (1.0 - 0.5 * u)
         x_bot = x_nose * 0.978
 
-        for j, v in enumerate(vs):
+        grille_blend = 1.0 - smootherstep(0.34, 0.46, u)
+        grille_rows = [0.0, vs[grille_top], vs[grille_bottom], 1.0]
+        grille_depth = [0.0, (z_top - 0.301) / (z_top - z_bot),
+                        (z_top - 0.171) / (z_top - z_bot), 1.0]
+        bumper_rows = vs + (np.interp(vs, grille_rows, grille_depth) - vs) * grille_blend
+
+        for j, v in enumerate(bumper_rows):
             if u > 0.88:
                 t_arch_blend = smootherstep(0.88, 1.0, u)
                 phi_v = FRONT_ARCH_SEAM_PHI + v * (math.radians(-22.0) - FRONT_ARCH_SEAM_PHI)
                 y_arch_v = C.Y_FRONT_AXLE + C.FRONT_ARCH_RAD * math.cos(phi_v)
                 z_arch_v = max(0.140, C.FRONT_WHEEL_Z + C.FRONT_ARCH_RAD * math.sin(phi_v))
                 x_arch_v = BodyCurves.eval_flank_x_at_yz(y_arch_v, z_arch_v) + 0.005
+                # Anchor the warped arch surface to the same upper break as
+                # the fender, including between the two seam endpoints.
+                x_arch_v += (x_top - arch_join_x) * (1.0 - v)
+                y_arch_v += (y_top - arch_join_y) * (1.0 - v)
+                z_arch_v += (z_top - arch_join_z) * (1.0 - v)
             else:
                 t_arch_blend = 0.0
                 x_arch_v = y_arch_v = z_arch_v = 0.0
 
-            bulge_y = 0.044 * math.sin(v * math.pi) * (1.0 - 0.45 * u * u)
+            bulge_y = 0.026 * math.sin(v * math.pi) * (1.0 - 0.45 * u * u)
             bulge_x = 0.020 * math.sin(v * math.pi) * (u ** 0.72)
             # Crisp aerodynamic chin blade protruding cleanly along lower lip (matching 1X7A0025.jpg!)
             chin_lip = 0.022 * math.exp(-((v - 0.91) / 0.048) ** 2) * (1.0 - 0.15 * u)
@@ -569,7 +605,7 @@ def build_front_bumper(col, mats):
             # 1. Sculpted Upper Mustache V-Notch Recess
             must_u = 1.0 - smootherstep(0.28, 0.36, u)
             must_v = 1.0 - smootherstep(0.04, 0.12, v)
-            y -= 0.022 * must_u * must_v
+            y -= 0.011 * must_u * must_v
 
             # 3. Clean Single Concave Outer Air-Curtain Cheek Bay + Slim Fog Wedge Pocket (matching 1X7A0025!)
             # Crisp upper wedge ledge at z ~ 0.318..0.336 holding flush dark smoked fog lamp!
@@ -597,7 +633,7 @@ def build_front_bumper(col, mats):
 
     # Cut the lower grille out of the bumper lattice. The opening and the
     # grille share one edge, including its rake around the front corners.
-    top, bottom, side = 25, 36, 21
+    top, bottom, side = grille_top, grille_bottom, grille_side
     for row in (top, bottom):
         grid[row, side, 0] -= 0.012
     grid[top, side - 1:side + 1, 2] -= (0.003, 0.010)
@@ -605,10 +641,11 @@ def build_front_bumper(col, mats):
     faces = np.ones((nv - 1, nu - 1), dtype=bool)
     faces[top:bottom, :side] = False
     mouth = grid[top:bottom + 1, :side + 1]
+    seam = [(0, i) for i, u in enumerate(us) if u >= lamp_tip]
     bumper = create_grid_surface(
         "Body_Front_Bumper", grid, col, material=mats["paint"],
         mirror_x=True, flip_normals=True, face_mask=faces,
-        add_flange=True, flange_depth=0.014, flange_bevel=0.002
+        add_flange=True, flange_depth=0.014, flange_bevel=0.002, flange_exclude=seam,
     )
     _build_front_grille(mouth, col, mats)
 
@@ -618,11 +655,8 @@ def build_front_bumper(col, mats):
     m_rings = []
     for i in range(nm):
         tm = i / (nm - 1)
-        x = tm * 0.400
-        y = 2.388 - 0.120 * (tm ** 1.85) + 0.005 * (1.0 - tm)
-        z_hi = 0.596 - 0.008 * (tm ** 1.5)
-        v_dip = 0.044 * math.exp(-((x / 0.068) ** 2))
-        z_lo = z_hi - 0.018 * (1.0 - 0.65 * tm) - v_dip
+        x, y, z_hi = eval_front_garnish_upper(tm)
+        _, _, z_lo = eval_front_garnish_lower(tm)
         m_rings.append([
             bm.verts.new((x, y + 0.005, z_hi)),
             bm.verts.new((x, y + 0.007, z_lo)),
@@ -664,83 +698,63 @@ def build_front_fender(col, mats, master_clay):
     yc, zc = C.Y_FRONT_AXLE, C.FRONT_WHEEL_Z
     r_arch = C.FRONT_ARCH_RAD
 
-    n_ang = 46
-    n_rad = 14
-    phis = np.linspace(FRONT_ARCH_SEAM_PHI, math.radians(206.0), n_ang)
+    n_rad = 19
+    arch_start = math.degrees(FRONT_ARCH_SEAM_PHI)
+    brow_end, cowl_corner, door_top = 65.0, 128.0, 138.0
+    angles = np.sort(np.append(np.linspace(arch_start, 206.0, 55),
+                               (brow_end, cowl_corner, 132.0, 135.0, door_top)))
+    _, y_brow_end, _ = eval_headlight_upper_rim(HOOD_LAMP_DIVIDE)
+    y_cowl = BodyCurves.HOOD_EDGE_Y[0]
+    x_cowl, z_cowl = BodyCurves.hood_edge(y_cowl)
+    x_door, z_door = BodyCurves.beltline(C.Y_FENDER_DOOR_TOP)
 
     def outer_boundary(phi_deg):
-        if phi_deg < 60.0:
-            # EXACT 0.0 mm match to eval_headlight_upper_rim(u) for u from 1.0 down to 0.50!
-            t = (phi_deg - 28.0) / 32.0
-            u_hl = 1.0 - 0.50 * t
-            _, y_o, z_o = eval_headlight_upper_rim(u_hl)
-        elif phi_deg < 138.0:
-            # Hood outer shutline flowing smoothly back to A-pillar foot (Y = 0.885)
-            t = (phi_deg - 60.0) / 78.0
-            _, y_hl5, _ = eval_headlight_upper_rim(0.50)
-            y_o = y_hl5 + (C.Y_FENDER_DOOR_TOP - y_hl5) * t
-            if y_o >= 0.955:
-                _, z_o = BodyCurves.hood_edge(min(y_o, 2.065))
-            else:
-                _, z_o = BodyCurves.beltline(y_o)
-        else:
-            t = (phi_deg - 138.0) / (206.0 - 138.0)
-            y_o = C.Y_FENDER_DOOR_TOP + (C.Y_FENDER_DOOR_BOT - C.Y_FENDER_DOOR_TOP) * t
-            _, z_top_d = BodyCurves.beltline(y_o)
-            _, z_bot_d = BodyCurves.sill_edge(y_o)
-            z_o = z_top_d + (z_bot_d - z_top_d) * t
-        return y_o, z_o
+        if phi_deg < brow_end:
+            t = (phi_deg - arch_start) / (brow_end - arch_start)
+            return eval_headlight_upper_rim(1.0 - (1.0 - HOOD_LAMP_DIVIDE) * t)
+        if phi_deg < cowl_corner:
+            t = (phi_deg - brow_end) / (cowl_corner - brow_end)
+            y = y_brow_end + (y_cowl - y_brow_end) * t
+            x, z = BodyCurves.hood_edge(y)
+            return x, y, z
+        if phi_deg < door_top:
+            t = (phi_deg - cowl_corner) / (door_top - cowl_corner)
+            y = y_cowl + (C.Y_FENDER_DOOR_TOP - y_cowl) * t
+            x = x_cowl + (x_door - x_cowl) * t
+            z = z_cowl + (z_door - z_cowl) * t + 0.002 * math.sin(math.pi * t)
+            return x, y, z
+        t = (phi_deg - door_top) / (206.0 - door_top)
+        y = C.Y_FENDER_DOOR_TOP + (C.Y_FENDER_DOOR_BOT - C.Y_FENDER_DOOR_TOP) * t
+        _, z_sill = BodyCurves.sill_edge(y)
+        z = z_door + (z_sill - z_door) * t
+        return BodyCurves.eval_flank_x_at_yz(y, z), y, z
 
-    grid = np.zeros((n_rad, n_ang, 3), dtype=np.float64)
-    for i, phi in enumerate(phis):
-        phi_deg = math.degrees(phi)
+    grid = np.zeros((n_rad, len(angles), 3), dtype=np.float64)
+    for i, phi_deg in enumerate(angles):
+        phi = math.radians(phi_deg)
         y_in = yc + r_arch * math.cos(phi)
         z_in = zc + r_arch * math.sin(phi)
         _, z_sill_in = BodyCurves.sill_edge(y_in)
-        if z_in < z_sill_in:
-            z_in = z_sill_in
+        z_in = max(z_in, z_sill_in)
+        x_out, y_out, z_out = outer_boundary(phi_deg)
 
-        y_out, z_out = outer_boundary(phi_deg)
-
-        for j in range(n_rad):
-            tr = j / (n_rad - 1)
+        for j, tr in enumerate(np.linspace(0.0, 1.0, n_rad)):
             tr_e = tr ** 1.15
             if i == 0:
                 grid[j, i] = eval_front_fender_bumper_join(tr_e)
                 continue
             y = y_in + (y_out - y_in) * tr_e
             z = z_in + (z_out - z_in) * tr_e
-
             x_side = BodyCurves.eval_flank_x_at_yz(y, z)
-            if 28.0 <= phi_deg < 60.0 and tr > 0.50:
-                # Smoothly lock top edge onto exact eval_headlight_upper_rim X without corner crease
-                t_top = smootherstep(0.50, 1.0, tr)
-                t_hl = (phi_deg - 28.0) / 32.0
-                x_hl, _, _ = eval_headlight_upper_rim(1.0 - 0.50 * t_hl)
-                x = x_side + (x_hl - x_side) * t_top
-            elif 60.0 <= phi_deg <= 144.0 and tr > 0.45:
-                t_top = smootherstep(0.45, 1.0, tr)
-                if y >= 0.955:
-                    x_hood, _ = BodyCurves.hood_edge(min(y, 2.065))
-                else:
-                    # Smooth airtight roll onto A-pillar foot (Y=0.885..0.955) -> ZERO black triangle!
-                    tb = smootherstep(0.885, 0.955, y)
-                    xh95, _ = BodyCurves.hood_edge(0.955)
-                    xc88, _ = BodyCurves.cantrail_outer(y)
-                    x_hood = xc88 + (xh95 - xc88) * tb
-                env_ang = 1.0 - smootherstep(134.0, 144.0, phi_deg)
-                x = x_side + (x_hood - x_side) * t_top * env_ang
-            else:
-                x = x_side
-
+            x = x_side + (x_out - x_side) * smootherstep(0.45, 1.0, tr)
             arch_flare = 0.005 * math.exp(-((tr / 0.22) ** 2)) * (1.0 - smootherstep(172.0, 204.0, phi_deg))
-            x += arch_flare
-            grid[j, i] = (x, y, z)
+            grid[j, i] = (x + arch_flare, y, z)
 
     fender = create_grid_surface(
         "Body_Front_Fender", grid, col, material=mats["paint"],
         mirror_x=True, flip_normals=False,
-        add_flange=True, flange_depth=0.018, flange_bevel=0.0022
+        add_flange=True, flange_depth=0.018, flange_bevel=0.0022,
+        flange_exclude=[(j, 0) for j in range(n_rad)],
     )
     add_normal_transfer(fender, master_clay, max_dist=0.016)
     _build_wheel_well_liner("Underbody_WheelLiner_Front", yc, zc, r_arch - 0.005, col, mats)
@@ -752,9 +766,10 @@ def build_front_fender(col, mats, master_clay):
 # ==============================================================================
 def build_doors(col, mats, master_clay):
     gap = C.PANEL_GAP * 0.5
+    rocker_seam = 0.869
 
     ny_f, nt_f = 34, 28
-    ts = np.linspace(0.0, 0.92, nt_f)
+    ts = np.linspace(0.0, rocker_seam - 0.0006, nt_f)
     grid_f = np.zeros((ny_f, nt_f, 3), dtype=np.float64)
     for j, t in enumerate(ts):
         y_start = (C.Y_FENDER_DOOR_TOP + (C.Y_FENDER_DOOR_BOT - C.Y_FENDER_DOOR_TOP) * t) - gap
@@ -767,7 +782,8 @@ def build_doors(col, mats, master_clay):
     front_door = create_grid_surface(
         "Body_Front_Door", grid_f, col, material=mats["paint"],
         mirror_x=True, flip_normals=True,
-        add_flange=True, flange_depth=C.PANEL_FLANGE_DEPTH, flange_bevel=C.PANEL_BEVEL_RAD
+        add_flange=True, flange_depth=C.PANEL_FLANGE_DEPTH, flange_bevel=C.PANEL_BEVEL_RAD,
+        flange_exclude=[(i, nt_f - 1) for i in range(ny_f)],
     )
     add_normal_transfer(front_door, master_clay, max_dist=0.015)
 
@@ -784,13 +800,14 @@ def build_doors(col, mats, master_clay):
     rear_door = create_grid_surface(
         "Body_Rear_Door", grid_r, col, material=mats["paint"],
         mirror_x=True, flip_normals=True,
-        add_flange=True, flange_depth=C.PANEL_FLANGE_DEPTH, flange_bevel=C.PANEL_BEVEL_RAD
+        add_flange=True, flange_depth=C.PANEL_FLANGE_DEPTH, flange_bevel=C.PANEL_BEVEL_RAD,
+        flange_exclude=[(i, nt_r - 1) for i in range(ny_r)],
     )
     add_normal_transfer(rear_door, master_clay, max_dist=0.015)
 
     ny_s, nt_s = 36, 10
     ys_s = np.linspace(-1.05, 1.06, ny_s)
-    ts_s = np.linspace(0.86, 1.0, nt_s)
+    ts_s = np.linspace(rocker_seam + 0.0006, 1.0, nt_s)
     grid_s = np.zeros((ny_s, nt_s, 3), dtype=np.float64)
     for i, y in enumerate(ys_s):
         for j, t in enumerate(ts_s):
@@ -799,7 +816,8 @@ def build_doors(col, mats, master_clay):
     rocker = create_grid_surface(
         "Body_Rocker_Skirt", grid_s, col, material=mats["paint"],
         mirror_x=True, flip_normals=True,
-        add_flange=True, flange_depth=0.012, flange_bevel=0.002
+        add_flange=True, flange_depth=0.012, flange_bevel=0.002,
+        flange_exclude=[(i, 0) for i in range(ny_s)],
     )
     add_normal_transfer(rocker, master_clay, max_dist=0.015)
     return front_door, rear_door, rocker
@@ -965,6 +983,9 @@ def build_roof_cantrails(col, mats):
 
     grid = np.zeros((ny, nw, 3), dtype=np.float64)
     for i, y in enumerate(ys):
+        y_in = BodyCurves.windshield_plan_y(y, 1.0)
+        # The foot of the rail stops at the upper door-to-fender seam.
+        y_out = y - (0.955 - C.Y_FENDER_DOOR_TOP) * smootherstep(0.72, 0.955, y)
         if y >= -2.14:
             x_in, z_in = BodyCurves.glass_edge(y)
             z_in -= 0.001
@@ -974,15 +995,15 @@ def build_roof_cantrails(col, mats):
             z_in = BodyCurves.roof_center_z(y) - 0.022
 
         if y >= -1.52:
-            x_out, z_out = BodyCurves.cantrail_outer(y)
+            x_out, z_out = BodyCurves.cantrail_outer(y_out)
         else:
-            x_out, z_out = BodyCurves.beltline(y)
+            x_out, z_out = BodyCurves.beltline(y_out)
 
         for j, w in enumerate(ws):
             x = x_in + (x_out - x_in) * (w ** 0.94)
             crown = 0.004 * math.sin(w * math.pi)
             z = z_in + (z_out - z_in) * (w ** 1.04) + crown
-            grid[i, j] = (x, y, z)
+            grid[i, j] = (x, y_in + (y_out - y_in) * w, z)
 
     return create_grid_surface(
         "Body_Roof_Cantrail", grid, col, material=mats["paint"],
@@ -1204,20 +1225,6 @@ def build_underbody_and_shadow_tub(col, mats):
             x, z = BodyCurves.eval_flank_section(y, t)
             sg[i, j] = (x - 0.022, y, z)
     create_grid_surface("Body_Shadow_Gap_Sides", sg, col, material=mats["shadow_gap"], mirror_x=True, flip_normals=True)
-
-    # Hood perimeter shadow tray
-    nu_h, nv_h = 20, 20
-    hg = np.zeros((nv_h, nu_h, 3), dtype=np.float64)
-    for j, v in enumerate(np.linspace(0.0, 1.0, nv_h)):
-        for i, u in enumerate(np.linspace(0.0, 1.0, nu_h)):
-            y_front_u = 2.368 - 0.120 * (u ** 2.08)
-            y_cowl_u = 0.945 - 0.050 * (u ** 2.1)
-            y = y_cowl_u + v * (y_front_u - y_cowl_u)
-            x_edge, z_edge = BodyCurves.hood_edge(min(y, 2.268))
-            x = u * (x_edge - 0.010)
-            z = BodyCurves.hood_center_z(y) + (z_edge - BodyCurves.hood_center_z(y)) * (u ** 1.85) - 0.018
-            hg[j, i] = (x, y, z)
-    create_grid_surface("Body_Shadow_Gap_Hood", hg, col, material=mats["shadow_gap"], mirror_x=True, flip_normals=False)
 
     # Rear tailgate shadow backing tray
     nu_t, nv_t = 18, 16

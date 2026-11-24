@@ -57,7 +57,10 @@ def main():
             print(f"WARNING: Unknown view '{vname}', skipping.")
             continue
         preset = CAMERA_PRESETS[vname]
-        set_camera(f"Cam_{vname}", preset["loc"], preset["tgt"], lens_mm=preset["lens"])
+        set_camera(
+            f"Cam_{vname}", preset["loc"], preset["tgt"], lens_mm=preset["lens"],
+            shift=preset.get("shift", (0.0, 0.0)), roll=preset.get("roll", 0.0),
+        )
         fname = f"{args.prefix}{args.env}_{vname}.png"
         out_path = os.path.join(args.out, fname)
         bpy.context.scene.render.filepath = out_path
