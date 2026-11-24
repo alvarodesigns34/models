@@ -93,5 +93,32 @@ if __name__ == "__main__":
             os.path.join(ref_wiki, "Tesla_Model_S_2024_Blue.jpg"),
             "Real Photo Reference — 2024 Model S Side Silhouette (Wikimedia CC)",
         ),
+        (
+            os.path.join(render_dir, f"{prefix}front_pure.png"),
+            "Blender Cycles 4.2 — 2024 Model S Plaid (Ultra Red) Front Fascia",
+            os.path.join(ref_wiki, "Tesla_Model_S_2023_Motorworld_Munich_1X7A0025.jpg"),
+            "Real Photo Reference — 2023 Model S Front Fascia & Matrix Headlights (Wikimedia CC)",
+        ),
     ]
     make_side_by_side(pairs, out_file)
+
+    # Also build optional detail sheet when close-up renders exist
+    hl_path = os.path.join(render_dir, f"{prefix}closeup_headlight.png")
+    wh_path = os.path.join(render_dir, f"{prefix}closeup_wheel.png")
+    if os.path.exists(hl_path) and os.path.exists(wh_path):
+        detail_out = os.path.join(os.path.dirname(out_file), "comparison_details_vs_real.jpg")
+        detail_pairs = [
+            (
+                hl_path,
+                "Blender Cycles 4.2 — Matrix LED Headlight & Front Air-Curtain Close-Up",
+                os.path.join(ref_wiki, "2023_Tesla_Model_S_Plaid.jpg"),
+                "Real Photo Reference — 2023 Model S Plaid Matrix LED & Arachnid Detail (Wikimedia CC)",
+            ),
+            (
+                wh_path,
+                "Blender Cycles 4.2 — 21\" Arachnid Wheel, Michelin PS4S & Red Plaid Caliper",
+                os.path.join(ref_wiki, "Tesla_Model_S_Plaid_Autofrühling_Ulm_IMG_9278.jpg"),
+                "Real Photo Reference — 21\" Arachnid Wheel & Red Caliper Stance (Wikimedia CC)",
+            ),
+        ]
+        make_side_by_side(detail_pairs, detail_out, title="Tesla Model S Plaid — Optical & Mechanical Detail Comparison")

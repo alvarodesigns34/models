@@ -30,19 +30,20 @@ from .geometry_utils import (
 
 
 def build_side_mirrors(col, mats):
-    """Build aerodynamic Model S Plaid side mirrors (reaching exact 2,189 mm width tip-to-tip!)."""
-    # Door sail base sits at Y ~ 0.65..0.84, Z ~ 0.905..0.98
+    """
+    Build sculpted aerodynamic 2024 Model S Plaid side mirrors (reaching exact 2,189 mm tip-to-tip!):
+    Crisp flat-bottomed wing profile with beveled shoulder crease matching 1X7A0025 & 2024_Blue.
+    """
     for sign, tag in [(1.0, "R"), (-1.0, "L")]:
-        # 1. Triangular gloss/satin black door-shoulder mounting sail
+        # 1. Triangular satin-black door-shoulder mounting sail
         bm = bmesh.new()
         sail_pts = [
-            (0.845, 0.855, 0.905),
-            (0.865, 0.675, 0.912),
-            (0.820, 0.695, 1.005),
-            (0.845, 0.845, 0.935),
+            (0.848, 0.855, 0.904),
+            (0.866, 0.675, 0.910),
+            (0.822, 0.695, 1.002),
+            (0.848, 0.845, 0.936),
         ]
-        # Give sail 18 mm thickness
-        v_out = [bm.verts.new((sign * (p[0] + 0.010), p[1], p[2])) for p in sail_pts]
+        v_out = [bm.verts.new((sign * (p[0] + 0.011), p[1], p[2])) for p in sail_pts]
         v_in = [bm.verts.new((sign * (p[0] - 0.012), p[1], p[2])) for p in sail_pts]
         bm.faces.new(v_out)
         bm.faces.new(list(reversed(v_in)))
@@ -58,63 +59,63 @@ def build_side_mirrors(col, mats):
         link_object(sail, col)
         sail.data.materials.append(mats["trim_satin_black"])
 
-        # 2. Sleek horizontal mirror stalk arm extending cleanly outward from sail
+        # 2. Muscular sculpted aerodynamic mirror stalk neck extending cleanly into lower shell
         arm_pts = [
-            (sign * 0.862, 0.745, 0.922),
-            (sign * 0.918, 0.720, 0.934),
-            (sign * 0.968, 0.700, 0.946),
+            (sign * 0.858, 0.742, 0.920),
+            (sign * 0.905, 0.720, 0.934),
+            (sign * 0.955, 0.702, 0.946),
         ]
         create_tube_along_points(
-            f"Mirror_Arm_{tag}", arm_pts, (0.022, 0.012), col,
+            f"Mirror_Arm_{tag}", arm_pts, (0.026, 0.013), col,
             material=mats["trim_satin_black"], segments=12
         )
 
-        # 3. Watertight Sculpted Aerodynamic Mirror Housing (Closed Tear-Drop Ellipsoid Cap + Lower Shell!)
-        # Spans X from 0.905 out to exact half-width C.WIDTH_MIRRORS*0.5 = 1.0945 m
-        nu, nv = 24, 18
-        us = np.linspace(0.0, 1.0, nu)  # 0=inner root -> 1=outer aerodynamic tip (closed smoothly to zero!)
-        vs = np.linspace(0.0, 1.0, nv)  # 0=rear rim -> 1=front nose apex
+        # 3. Sculpted Flat-Bottomed Angular Model S Mirror Housing (X = 0.892 .. 1.0945 m!)
+        nu, nv = 26, 18
+        us = np.linspace(0.0, 1.0, nu)
+        vs = np.linspace(0.0, 1.0, nv)
 
         g_top = np.zeros((nv, nu, 3), dtype=np.float64)
         g_bot = np.zeros((nv, nu, 3), dtype=np.float64)
         for i, u in enumerate(us):
-            x_span = 0.905 + u * (C.WIDTH_MIRRORS * 0.5 - 0.905)
-            y_rear = 0.660 - 0.042 * (u ** 1.1)
-            # Smoothly closes at BOTH inner (u=0) and outer (u=1) ends so shell is 100% watertight!
-            env = math.sin(u * math.pi) ** 0.55
-            depth = 0.128 * (0.15 + 0.85 * env)
-            h_up = 0.068 * env
-            h_dn = 0.042 * env
-            z_mid = 0.976 + 0.015 * u
+            x_span = 0.892 + u * (C.WIDTH_MIRRORS * 0.5 - 0.892)
+            y_rear = 0.658 - 0.048 * (u ** 1.15)
+            # Wider sculpted trapezoidal wing silhouette (fuller inner-mid crown, crisp outer tip!)
+            env_top = (math.sin(u * math.pi) ** 0.42) * (1.0 - 0.24 * (u ** 1.8))
+            env_bot = (math.sin(u * math.pi) ** 0.38) * (1.0 - 0.12 * u)
+            depth = 0.136 * (0.14 + 0.86 * (math.sin(u * math.pi) ** 0.45))
+            h_up = 0.074 * env_top
+            h_dn = 0.032 * env_bot
+            # Slight sporty upward sweep along flat lower crease line
+            z_mid = 0.972 + 0.014 * u
 
             for j, v in enumerate(vs):
-                # v=0 is rear flat mirror opening, v=1 is curved aerodynamic front apex
                 ang = v * (math.pi * 0.5)
-                y = y_rear + depth * math.sin(ang)
-                z_top = z_mid + h_up * math.cos(ang)
-                z_bot = z_mid - h_dn * math.cos(ang)
+                y = y_rear + depth * (math.sin(ang) ** 0.88)
+                # Slightly flatter squared-off crown + crisp horizontal lower satin-black chin
+                z_top = z_mid + h_up * (math.cos(ang) ** 0.82)
+                z_bot = z_mid - h_dn * (math.cos(ang) ** 0.72)
                 g_top[j, i] = (sign * x_span, y, z_top)
                 g_bot[j, i] = (sign * x_span, y, z_bot)
 
         create_grid_surface(
             f"Mirror_UpperCap_{tag}", g_top, col, material=mats["paint"],
-            flip_normals=(sign < 0)
+            flip_normals=(sign > 0)
         )
         create_grid_surface(
             f"Mirror_LowerShell_{tag}", g_bot, col, material=mats["trim_satin_black"],
-            flip_normals=(sign > 0)
+            flip_normals=(sign < 0)
         )
 
         # 4. Watertight Rear Bezel Backing + Auto-Dimming Mirror Glass Pane
         g_back = np.zeros((10, nu, 3), dtype=np.float64)
         g_gl = np.zeros((8, 16, 3), dtype=np.float64)
         for i, u in enumerate(us):
-            x_span = 0.905 + u * (C.WIDTH_MIRRORS * 0.5 - 0.905)
-            y_rear = 0.660 - 0.042 * (u ** 1.1)
-            env = math.sin(u * math.pi) ** 0.55
-            h_up = 0.068 * env
-            h_dn = 0.042 * env
-            z_mid = 0.976 + 0.015 * u
+            x_span = 0.892 + u * (C.WIDTH_MIRRORS * 0.5 - 0.892)
+            y_rear = 0.658 - 0.048 * (u ** 1.15)
+            h_up = 0.074 * (math.sin(u * math.pi) ** 0.42) * (1.0 - 0.24 * (u ** 1.8))
+            h_dn = 0.032 * (math.sin(u * math.pi) ** 0.38) * (1.0 - 0.12 * u)
+            z_mid = 0.972 + 0.014 * u
             for j, v in enumerate(np.linspace(0.0, 1.0, 10)):
                 z = (z_mid - h_dn) + v * (h_up + h_dn)
                 g_back[j, i] = (sign * x_span, y_rear + 0.004, z)
@@ -124,12 +125,11 @@ def build_side_mirrors(col, mats):
         )
 
         for i, u in enumerate(np.linspace(0.08, 0.92, 16)):
-            x_span = 0.905 + u * (C.WIDTH_MIRRORS * 0.5 - 0.905)
-            y_rear = 0.659 - 0.042 * (u ** 1.1)
-            env = math.sin(u * math.pi) ** 0.55
-            h_up = 0.056 * env
-            h_dn = 0.034 * env
-            z_mid = 0.976 + 0.015 * u
+            x_span = 0.892 + u * (C.WIDTH_MIRRORS * 0.5 - 0.892)
+            y_rear = 0.657 - 0.048 * (u ** 1.15)
+            h_up = 0.062 * (math.sin(u * math.pi) ** 0.42) * (1.0 - 0.24 * (u ** 1.8))
+            h_dn = 0.025 * (math.sin(u * math.pi) ** 0.38) * (1.0 - 0.12 * u)
+            z_mid = 0.972 + 0.014 * u
             for j, v in enumerate(np.linspace(0.0, 1.0, 8)):
                 z = (z_mid - h_dn) + v * (h_up + h_dn)
                 g_gl[j, i] = (sign * x_span, y_rear, z)
@@ -137,6 +137,24 @@ def build_side_mirrors(col, mats):
             f"Mirror_Glass_{tag}", g_gl, col, material=mats["glass_mirror"],
             flip_normals=(sign < 0)
         )
+
+
+def build_micro_body_seams(col, mats):
+    """Build OEM front bumper circular tow-eye cover seam ring (matching 1X7A0025.jpg)."""
+    # Located on driver-left side of front bumper (X = -0.365, Z = 0.415, diameter ~52 mm)
+    pts = []
+    cx, cz, rad = -0.365, 0.415, 0.025
+    for k in range(25):
+        ang = 2.0 * math.pi * k / 24.0
+        px = cx + rad * math.cos(ang)
+        pz = cz + rad * math.sin(ang)
+        # Follow exact front bumper outer skin curve cleanly
+        py = 2.388 - 0.125 * ((abs(px) / 0.946) ** 1.85) + 0.028 * math.sin(((0.58 - pz) / 0.44) * math.pi)
+        pts.append((px, py - 0.001, pz))
+    create_tube_along_points(
+        "Detail_FrontBumper_TowEyeSeam", pts, 0.0014, col,
+        material=mats["shadow_gap"], segments=6, cap_ends=False
+    )
 
 
 def build_flush_door_handles(col, mats):
@@ -326,7 +344,7 @@ def build_rear_garnish_letters_and_plaid_badge(col, mats):
         link_object(fobj, col)
         ly = _eval_tailgate_y(lx, 0.851) - 0.0095
         fobj.location = (lx, ly, 0.851)
-        fobj.rotation_euler = (math.radians(90), 0.0, math.radians(180))
+        fobj.rotation_euler = (math.radians(90), 0.0, 0.0)
         fobj.data.materials.append(mats["dark_satin_chrome"])
 
     # 3. Rear Metallic Geometric Plaid Warp Badge (Lower-Right Tailgate: X = +0.445, Z = 0.684!)
@@ -456,4 +474,5 @@ def build_all_exterior_details(root_col, mats):
     build_rear_garnish_letters_and_plaid_badge(col, mats)
     build_carbon_rear_spoiler(col, mats)
     build_windshield_wipers(col, mats)
+    build_micro_body_seams(col, mats)
     return col

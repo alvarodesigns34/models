@@ -308,49 +308,60 @@ def build_simple_pbr(name, color, metallic=0.0, roughness=0.35, coat=0.0,
 
 
 def build_tire_sidewall_mat(name, bump_file, rough_file):
-    """Deep vulcanized carbon-black Michelin Pilot Sport 4S sidewall w/ velvet flags & lettering."""
+    """Deep vulcanized Michelin Pilot Sport 4S 'Premium Touch' velvet sidewall w/ raised lettering."""
     mat = _new_material(name)
     nt = mat.node_tree
     nodes, links = nt.nodes, nt.links
 
     out = nodes.new("ShaderNodeOutputMaterial")
-    out.location = (620, 0)
+    out.location = (640, 0)
     bsdf = nodes.new("ShaderNodeBsdfPrincipled")
-    bsdf.location = (280, 0)
+    bsdf.location = (300, 0)
     links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
 
-    bsdf.inputs["Base Color"].default_value = (0.007, 0.0075, 0.0085, 1.0)
-    bsdf.inputs["Specular IOR Level"].default_value = 0.16
+    # Low effective dielectric specular keeps flat sidewall deep jet-black even under bright studio lights!
+    bsdf.inputs["Specular IOR Level"].default_value = 0.075
 
     tc = nodes.new("ShaderNodeTexCoord")
-    tc.location = (-600, 0)
+    tc.location = (-640, 0)
 
     img_b = _load_image(bump_file, "Non-Color")
     img_r = _load_image(rough_file, "Non-Color")
 
     if img_r:
         tr = nodes.new("ShaderNodeTexImage")
-        tr.location = (-280, 120)
+        tr.location = (-320, 140)
         tr.image = img_r
         links.new(tc.outputs["UV"], tr.inputs["Vector"])
+
+        # Darker jet-black inside Michelin laser-etched velvet checkers vs smooth rubber rings!
+        col_mix = nodes.new("ShaderNodeMix")
+        col_mix.data_type = "RGBA"
+        col_mix.location = (20, 260)
+        col_mix.inputs[6].default_value = (0.0058, 0.0062, 0.0070, 1.0)
+        col_mix.inputs[7].default_value = (0.0020, 0.0022, 0.0025, 1.0)
+        links.new(tr.outputs["Color"], col_mix.inputs["Factor"])
+        links.new(col_mix.outputs[2], bsdf.inputs["Base Color"])
+
         mr = nodes.new("ShaderNodeMapRange")
-        mr.location = (0, 120)
-        mr.inputs["To Min"].default_value = 0.46
-        mr.inputs["To Max"].default_value = 0.82
+        mr.location = (20, 80)
+        mr.inputs["To Min"].default_value = 0.56
+        mr.inputs["To Max"].default_value = 0.94
         links.new(tr.outputs["Color"], mr.inputs["Value"])
         links.new(mr.outputs["Result"], bsdf.inputs["Roughness"])
     else:
-        bsdf.inputs["Roughness"].default_value = 0.65
+        bsdf.inputs["Base Color"].default_value = (0.0040, 0.0042, 0.0048, 1.0)
+        bsdf.inputs["Roughness"].default_value = 0.72
 
     if img_b:
         tb = nodes.new("ShaderNodeTexImage")
-        tb.location = (-280, -180)
+        tb.location = (-320, -180)
         tb.image = img_b
         links.new(tc.outputs["UV"], tb.inputs["Vector"])
         bump = nodes.new("ShaderNodeBump")
-        bump.location = (20, -180)
-        bump.inputs["Strength"].default_value = 0.62
-        bump.inputs["Distance"].default_value = 0.0028
+        bump.location = (40, -180)
+        bump.inputs["Strength"].default_value = 0.68
+        bump.inputs["Distance"].default_value = 0.0030
         links.new(tb.outputs["Color"], bump.inputs["Height"])
         links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
 
@@ -402,7 +413,7 @@ def build_brake_rotor_mat():
 
 
 def build_plaid_badge_mat():
-    """Metallic/enamel geometric Plaid warp badge with clear resin coat."""
+    """Metallic/enamel geometric Plaid warp badge with crisp contrast and controlled clear coat."""
     mat = _new_material("Plaid_Badge_Mat")
     nt = mat.node_tree
     nodes, links = nt.nodes, nt.links
@@ -433,9 +444,9 @@ def build_plaid_badge_mat():
         links.new(tc.outputs["UV"], t2.inputs["Vector"])
         links.new(t2.outputs["Color"], bsdf.inputs["Metallic"])
 
-    bsdf.inputs["Roughness"].default_value = 0.22
-    bsdf.inputs["Coat Weight"].default_value = 0.9
-    bsdf.inputs["Coat Roughness"].default_value = 0.04
+    bsdf.inputs["Roughness"].default_value = 0.28
+    bsdf.inputs["Coat Weight"].default_value = 0.42
+    bsdf.inputs["Coat Roughness"].default_value = 0.06
     return mat
 
 
@@ -502,21 +513,21 @@ def build_perforated_leather_mat():
     mix_col = nodes.new("ShaderNodeMix")
     mix_col.data_type = "RGBA"
     mix_col.location = (80, 220)
-    mix_col.inputs[6].default_value = (0.004, 0.004, 0.005, 1.0)
-    mix_col.inputs[7].default_value = (0.022, 0.023, 0.026, 1.0)
+    mix_col.inputs[6].default_value = (0.0015, 0.0015, 0.002, 1.0)
+    mix_col.inputs[7].default_value = (0.011, 0.0115, 0.013, 1.0)
     links.new(ramp.outputs["Color"], mix_col.inputs["Factor"])
     links.new(mix_col.outputs[2], bsdf.inputs["Base Color"])
 
     bump = nodes.new("ShaderNodeBump")
     bump.location = (60, -120)
-    bump.inputs["Strength"].default_value = 0.35
-    bump.inputs["Distance"].default_value = 0.001
+    bump.inputs["Strength"].default_value = 0.42
+    bump.inputs["Distance"].default_value = 0.0012
     links.new(ramp.outputs["Color"], bump.inputs["Height"])
     links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
 
-    bsdf.inputs["Roughness"].default_value = 0.44
-    bsdf.inputs["Specular IOR Level"].default_value = 0.42
-    bsdf.inputs["Sheen Weight"].default_value = 0.12
+    bsdf.inputs["Roughness"].default_value = 0.42
+    bsdf.inputs["Specular IOR Level"].default_value = 0.34
+    bsdf.inputs["Sheen Weight"].default_value = 0.03
     return mat
 
 
@@ -551,6 +562,7 @@ def build_zebra_diagnostic_mat():
     ramp.color_ramp.elements[1].color = (0.95, 0.95, 0.95, 1.0)
     links.new(wave.outputs["Fac"], ramp.inputs["Fac"])
     links.new(ramp.outputs["Color"], em.inputs["Color"])
+    mat.use_fake_user = True
     return mat
 
 
@@ -567,11 +579,11 @@ def create_all_materials():
     mats["trim_matte_plastic"] = build_simple_pbr("Trim_Matte_Underbody", (0.010, 0.0105, 0.0115), metallic=0.0, roughness=0.64, spec=0.22, noise_bump=0.035, noise_scale=600.0)
     mats["shadow_gap"] = build_simple_pbr("Body_Shadow_Gap", (0.002, 0.002, 0.0025), metallic=0.0, roughness=0.90, spec=0.02)
     mats["chrome"] = build_simple_pbr("Chrome_Emblem", (0.86, 0.87, 0.89), metallic=1.0, roughness=0.04)
-    mats["dark_satin_chrome"] = build_simple_pbr("Dark_Satin_Chrome", (0.26, 0.27, 0.29), metallic=0.95, roughness=0.18)
+    mats["dark_satin_chrome"] = build_simple_pbr("Dark_Satin_Chrome", (0.38, 0.40, 0.43), metallic=0.96, roughness=0.15)
     mats["plaid_badge"] = build_plaid_badge_mat()
 
-    # Glazing & Optics (Crystal-clear thin-sheet automotive glass with authentic tint!)
-    mats["glass_windshield"] = build_automotive_glass("Glass_Windshield", (0.48, 0.54, 0.54), (0.78, 0.82, 0.82), roughness=0.005, dark_reflect=False)
+    # Glazing & Optics (Crystal-clear thin-sheet automotive glass with authentic outward normals!)
+    mats["glass_windshield"] = build_automotive_glass("Glass_Windshield", (0.50, 0.56, 0.56), (0.80, 0.84, 0.84), roughness=0.005, dark_reflect=False)
     mats["glass_roof"] = build_automotive_glass("Glass_Panoramic_Roof", (0.04, 0.045, 0.055), (0.35, 0.38, 0.42), roughness=0.005, dark_reflect=True)
     mats["glass_side"] = build_automotive_glass("Glass_Side_Window", (0.14, 0.17, 0.18), (0.58, 0.62, 0.62), roughness=0.005, dark_reflect=True)
     mats["glass_rear"] = build_automotive_glass("Glass_Rear_Hatch", (0.07, 0.085, 0.095), (0.42, 0.45, 0.48), roughness=0.005, dark_reflect=True)
@@ -632,16 +644,16 @@ def create_all_materials():
         cbsdf.inputs["Base Color"].default_value = (0.62, 0.010, 0.010, 1.0)
     mats["caliper_decal"] = cal_dec
 
-    # Interior Materials
-    mats["int_leather"] = build_simple_pbr("Interior_Vegan_Leather_Black", (0.018, 0.019, 0.022), metallic=0.0, roughness=0.40, spec=0.40, sheen=0.10, noise_bump=0.025, noise_scale=900.0)
+    # Interior Materials (Authentic Rich Tesla All-Black Premium Cabin — zero washed-out grey sheen!)
+    mats["int_leather"] = build_simple_pbr("Interior_Vegan_Leather_Black", (0.010, 0.0105, 0.012), metallic=0.0, roughness=0.40, spec=0.34, sheen=0.03, noise_bump=0.028, noise_scale=950.0)
     mats["int_leather_perf"] = build_perforated_leather_mat()
-    mats["int_alcantara"] = build_simple_pbr("Interior_Alcantara_Charcoal", (0.014, 0.015, 0.017), metallic=0.0, roughness=0.84, spec=0.16, sheen=0.85, noise_bump=0.05, noise_scale=1800.0)
-    mats["int_carpet"] = build_simple_pbr("Interior_Carpet_Black", (0.010, 0.010, 0.012), metallic=0.0, roughness=0.92, spec=0.08, sheen=0.35, noise_bump=0.12, noise_scale=1400.0)
+    mats["int_alcantara"] = build_simple_pbr("Interior_Alcantara_Charcoal", (0.008, 0.0085, 0.010), metallic=0.0, roughness=0.88, spec=0.10, sheen=0.14, noise_bump=0.06, noise_scale=1800.0)
+    mats["int_carpet"] = build_simple_pbr("Interior_Carpet_Black", (0.006, 0.006, 0.007), metallic=0.0, roughness=0.94, spec=0.06, sheen=0.08, noise_bump=0.14, noise_scale=1400.0)
     mats["int_satin_silver"] = build_simple_pbr("Interior_Satin_Silver", (0.64, 0.66, 0.69), metallic=0.94, roughness=0.22)
     mats["int_speaker_mesh"] = build_simple_pbr("Interior_Speaker_Mesh", (0.035, 0.037, 0.042), metallic=0.65, roughness=0.36, noise_bump=0.12, noise_scale=1600.0)
-    mats["screen_center"] = build_screen_mat("Screen_Center_17in", "screen_center_ui.png", strength=1.5)
-    mats["screen_cluster"] = build_screen_mat("Screen_Cluster_12in", "screen_cluster_ui.png", strength=1.4)
-    mats["screen_rear"] = build_screen_mat("Screen_Rear_9in", "screen_rear_ui.png", strength=1.2)
+    mats["screen_center"] = build_screen_mat("Screen_Center_17in", "screen_center_ui.png", strength=1.8)
+    mats["screen_cluster"] = build_screen_mat("Screen_Cluster_12in", "screen_cluster_ui.png", strength=1.7)
+    mats["screen_rear"] = build_screen_mat("Screen_Rear_9in", "screen_rear_ui.png", strength=1.4)
 
     # Diagnostic Shader
     mats["zebra"] = build_zebra_diagnostic_mat()

@@ -60,4 +60,41 @@ This document tracks every **INVESTIGATE → MODEL → RENDER → INSPECT → CO
   - **Studio Environment (`environments.py`)**:
     - Added soft cyclorama wall wash lights for seamless dark slate studio backdrop gradient and elevated/softened overhead softbox ribbon.
 - **Build Audit**: 236 objects, 110,444 vertices, 103,786 polygons — Length `5013.0 mm`, Body Width `1985.4 mm`, Mirror Width `2189.0 mm`, Height `1428.4 mm`, Ground Z `+0.5 mm`, zero build warnings.
-- **Status**: Rendering 5-angle validation suite (`renders/iterations/iter03/`).
+- **Visual QA Results (`renders/iterations/iter03/`)**:
+  - **Resolved**: Rear diffuser red poke-through eliminated; roof horns eliminated; front bumper ↔ front fender wheel arch seam sealed; Plaid badge & rear `T E S L A` letters visible; studio cyclorama gradient active; front/rear caliper white `TESLA` decals & Arachnid center `T` crests visible.
+  - **Remaining Defects Identified**:
+    - **[P0]** Diagonal fold crease + horizontal shelf step across Rear Quarter ↔ Rear Bumper seam.
+    - **[P0]** Black triangular artifact at A-pillar foot / front fender rear-top corner.
+    - **[P0]** Front headlight lens outer corner slightly above hood/fender brow; lower fog strip recessed behind red bumper skin.
+    - **[P1]** Tire sidewalls still washed medium-grey under low studio fill; windshield reflected harsh pure-white rectangular softbox; side mirrors too oval vs real angular flat-bottom Model S wings.
+
+---
+
+## Iteration 4 — Unified C2 Bezier Rear Haunch, Shared Headlight Curves & Feathered Silk Scrims
+- **Fixes Applied**:
+  - **Unified C2 Cubic-Bezier Rear Haunch (`body_master.py`)**: Replaced separate `Body_Rear_Quarter_CornerWrap` patch with ONE single welded continuous `Body_Rear_Quarter` bmesh sharing `eval_rear_corner_bezier(t, z)` and `Master_ClassA_RearHaunch_Clay` `DATA_TRANSFER` normals seamlessly with `Body_Rear_Bumper`. Added upward lower rear overhang aero sweep matching `IMG_9321.jpg`.
+  - **Shared 0.0 mm Headlight Perimeter (`body_master.py`, `lighting.py`)**: Exported `eval_headlight_lower_rim` & `eval_headlight_upper_rim` identically to Hood, Front Fender, Front Bumper, and Matrix LED headlights; moved lower smoked needle-wedge fog lights flush onto outer front bumper curvature (`1X7A0025.jpg`).
+  - **Details & Materials (`exterior_details.py`, `materials.py`, `interior.py`, `environments.py`)**:
+    - Resculpted wider angular flat-bottom Model S Plaid side mirrors; added front bumper circular tow-eye cover seam.
+    - Calibrated Michelin Pilot Sport 4S "Premium Touch" velvet rubber (`Base Color` `0.0020–0.0058`, `Specular IOR Level 0.075`, `Roughness 0.56–0.94`) and brighter satin `T E S L A` rear lettering.
+    - Fixed 9.4" rear touchscreen horizontal UV; added sculpted metallic `T` emblem on Steering Yoke airbag hub.
+    - Upgraded studio Area Lights to Cycles feathered silk scrim softboxes (`Geometry -> Parametric -> Quadratic Sphere`).
+- **Build Audit**: 239 objects, 113,218 vertices, 106,446 polygons — Length `5025.2 mm` (`+4.2 mm`), Body Width `1983.4 mm` (`-3.6 mm`), Mirror Width `2189.0 mm` (`0.0 mm`), Height `1428.4 mm` (`-1.6 mm`).
+- **Visual QA Results (`renders/iterations/iter04/`)**:
+  - **Major Wins**: Diagonal rear quarter crease & horizontal bumper shelf step 100% eliminated; flush smoked fog wedges + concave air curtains + tow-eye cover look spot-on in `front_pure`; Michelin PS4S tire rubber now deep velvet jet-black.
+  - **Root-Cause Raycast & Full Normal Audit Findings**:
+    - **[P0]** BVH raycast at `(-0.82, 0.91, 0.87)` proved the persistent A-pillar black triangle was caused by `Body_Shadow_Gap_Sides` extending forward to `Y = 1.08` and poking through the sculpted front fender shoulder!
+    - **[P0]** Automated normal audit of all 21 primary panels revealed 8 inverted-normal surfaces (`Body_Hood`, `Body_Roof_Cantrail`, `Glass_Windshield`, `Glass_Panoramic_Roof`, `Glass_Rear_Hatch`, `Light_Headlight_*`, `Light_Taillight_*`, `Mirror_UpperCap/LowerShell`). Crucially, inverted normals on `Glass_Windshield` and `Light_Taillight_OuterLens` triggered Cycles internal Fresnel TIR (`1/1.52`), explaining the blown-out white glare across the windshield in `front_pure` and the bright crescents on outer taillight tips!
+    - **[P1]** Lower rear bumper corner in `eval_rear_corner_bezier` flared slightly outward near the ground (`Z = 0.17..0.45`) instead of tucking smoothly inward like `IMG_9321.jpg`.
+    - **[P2]** `Zebra_Diagnostic_Mat` had 0 users on save and was garbage-collected by Blender before zebra rendering.
+
+---
+
+## Iteration 5 — 100% Verified Outward Normals, A-Pillar Shadow Fix & Rear Lower Tumblehome Taper
+- **Fixes Applied**:
+  - Flipped normals to verified outward direction across ALL 8 remaining inverted surfaces (`Body_Hood`, `Body_Roof_Cantrail`, `Glass_Windshield`, `Glass_Panoramic_Roof`, `Glass_Rear_Hatch`, `Light_Headlight_*`, `Light_FrontFog_*`, `Light_Taillight_*`, `Mirror_UpperCap/LowerShell`) — **21/21 primary surfaces verified 100% outward via automated polygon normal audit**.
+  - Bounded `Body_Shadow_Gap_Sides` strictly behind front/rear doors (`Y in [-1.05, 0.878]`, `-22 mm` inset), eliminating the A-pillar black triangle completely.
+  - Added smooth lower tumblehome inward tuck (`lower_tuck`) to `eval_rear_corner_bezier` below `Z = 0.55` for authentic wide-hipped, tapered sports-sedan rear stance.
+  - Enabled `use_fake_user = True` + on-the-fly fallback for `Zebra_Diagnostic_Mat` so Class-A curvature stripe diagnostics work reliably.
+- **Status**: Rendering Iteration 5 validation suite (`renders/iterations/iter05/`, 5 studio + 3 zebra views).
+

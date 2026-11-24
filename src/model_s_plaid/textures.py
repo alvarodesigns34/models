@@ -287,11 +287,24 @@ def generate_tesla_screens():
     d = ImageDraw.Draw(img)
 
     # Left vehicle status pane (x: 0..620)
-    d.rectangle([0, 0, 620, h - 100], fill=(22, 24, 30))
-    # Subtle garage floor glow & red Model S top/3-4 silhouette card
-    d.ellipse([120, 380, 500, 680], fill=(40, 22, 26))
-    d.rounded_rectangle([185, 340, 435, 670], radius=95, fill=(145, 16, 22), outline=(220, 50, 55), width=3)
-    d.rounded_rectangle([215, 420, 405, 585], radius=45, fill=(18, 22, 28))  # Glass roof
+    d.rectangle([0, 0, 620, h - 100], fill=(20, 22, 28))
+    car_preview = os.path.join(TEXTURE_DIR, "..", "renders", "iterations", "iter05", "studio_front_3q.png")
+    if os.path.exists(car_preview):
+        c_im = Image.open(car_preview).convert("RGB")
+        cw_src, ch_src = c_im.size
+        # Crop cleanly around vehicle center and fit inside the dark slate UI card
+        crop_box = (int(cw_src * 0.02), int(ch_src * 0.12), int(cw_src * 0.92), int(ch_src * 0.92))
+        c_fit = c_im.crop(crop_box).resize((560, 340), Image.Resampling.LANCZOS)
+        # Soft dark radial vignette mask so car blends cleanly into dark Tesla UI card
+        mask = Image.new("L", (560, 340), 0)
+        md = ImageDraw.Draw(mask)
+        md.rounded_rectangle([14, 14, 546, 326], radius=48, fill=255)
+        mask = mask.filter(ImageFilter.GaussianBlur(radius=14))
+        img.paste(c_fit, (30, 280), mask)
+    else:
+        d.ellipse([120, 380, 500, 680], fill=(40, 22, 26))
+        d.rounded_rectangle([185, 340, 435, 670], radius=95, fill=(145, 16, 22), outline=(220, 50, 55), width=3)
+        d.rounded_rectangle([215, 420, 405, 585], radius=45, fill=(18, 22, 28))
     f_lg = load_font(62, bold=True)
     f_md = load_font(34, bold=False)
     f_sm = load_font(26, bold=False)
@@ -300,8 +313,8 @@ def generate_tesla_screens():
     d.text((430, 48), "94%", font=f_md, fill=(235, 240, 245))
     d.rounded_rectangle([518, 56, 582, 82], radius=5, outline=(180, 188, 198), width=3)
     d.rectangle([523, 61, 574, 77], fill=(64, 210, 102))
-    d.text((160, 730), "MODEL S PLAID", font=f_md, fill=(215, 220, 228))
-    d.text((225, 778), "Track Mode Ready", font=f_sm, fill=(215, 52, 56))
+    d.text((160, 700), "MODEL S PLAID", font=f_md, fill=(215, 220, 228))
+    d.text((208, 750), "Track Mode Ready", font=f_sm, fill=(225, 54, 58))
 
     # Right dark-mode navigation map pane (x: 622..1920)
     d.rectangle([622, 0, w, h - 100], fill=(24, 28, 36))

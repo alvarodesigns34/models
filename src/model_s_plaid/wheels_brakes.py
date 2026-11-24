@@ -78,11 +78,12 @@ def _build_tire_3d(name_prefix, cx, cy, cz, side_sign, rim_r, tire_r, tire_w, sq
                 f = bm.faces.new((v0, v1, v2, v3) if side_sign < 0 else (v0, v3, v2, v1))
                 r0 = prof[p][0] / tire_r
                 r1 = prof[p + 1][0] / tire_r
+                # side_sign on cos(a) keeps U=0 left -> U=1 right when viewed from outside on BOTH left & right wheels!
                 uvs = [
-                    (0.5 + 0.5 * r0 * math.cos(a0), 0.5 + 0.5 * r0 * math.sin(a0)),
-                    (0.5 + 0.5 * r0 * math.cos(a1), 0.5 + 0.5 * r0 * math.sin(a1)),
-                    (0.5 + 0.5 * r1 * math.cos(a1), 0.5 + 0.5 * r1 * math.sin(a1)),
-                    (0.5 + 0.5 * r1 * math.cos(a0), 0.5 + 0.5 * r1 * math.sin(a0)),
+                    (0.5 + 0.5 * side_sign * r0 * math.cos(a0), 0.5 + 0.5 * r0 * math.sin(a0)),
+                    (0.5 + 0.5 * side_sign * r0 * math.cos(a1), 0.5 + 0.5 * r0 * math.sin(a1)),
+                    (0.5 + 0.5 * side_sign * r1 * math.cos(a1), 0.5 + 0.5 * r1 * math.sin(a1)),
+                    (0.5 + 0.5 * side_sign * r1 * math.cos(a0), 0.5 + 0.5 * r1 * math.sin(a0)),
                 ]
                 if side_sign > 0:
                     uvs = [uvs[0], uvs[3], uvs[2], uvs[1]]

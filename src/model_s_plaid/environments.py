@@ -46,7 +46,8 @@ def _set_light_strengths(drl=10.0, proj=4.5, fog=2.5, tail=8.5, screens=1.4):
                     node.inputs["Emission Strength"].default_value = val
 
 
-def _add_area_light(name, location, target, size_x, size_y, energy, color, col, spread_deg=110.0):
+def _add_area_light(name, location, target, size_x, size_y, energy, color, col,
+                    spread_deg=110.0, feathered=False):
     ldata = bpy.data.lights.new(name=name, type="AREA")
     ldata.shape = "RECTANGLE"
     ldata.size = size_x
@@ -55,6 +56,30 @@ def _add_area_light(name, location, target, size_x, size_y, energy, color, col, 
     ldata.color = color
     if hasattr(ldata, "spread"):
         ldata.spread = math.radians(spread_deg)
+
+    if feathered:
+        # Commercial automotive photographic feathered silk scrim softbox!
+        # Smoothly decays radiance to 0.0 at rectangular edges -> silky glass/paint reflections, ZERO hard white box!
+        ldata.use_nodes = True
+        nt = ldata.node_tree
+        nodes, links = nt.nodes, nt.links
+        em = nodes.get("Emission")
+        if em is not None:
+            geom = nodes.new("ShaderNodeNewGeometry")
+            mp = nodes.new("ShaderNodeMapping")
+            mp.inputs["Location"].default_value = (-1.0, -1.0, 0.0)
+            mp.inputs["Scale"].default_value = (2.0, 2.0, 1.0)
+            grad = nodes.new("ShaderNodeTexGradient")
+            grad.gradient_type = "QUADRATIC_SPHERE"
+            mult = nodes.new("ShaderNodeMath")
+            mult.operation = "MULTIPLY"
+            mult.inputs[1].default_value = 2.4  # Compensate feathered area integral
+            links.new(geom.outputs["Parametric"], mp.inputs["Vector"])
+            links.new(mp.outputs["Vector"], grad.inputs["Vector"])
+            links.new(grad.outputs["Fac"], mult.inputs[0])
+            links.new(mult.outputs["Value"], em.inputs["Strength"])
+            em.inputs["Color"].default_value = (*color[:3], 1.0)
+
     lobj = bpy.data.objects.new(name=name, object_data=ldata)
     link_object(lobj, col)
     lobj.location = location
@@ -86,21 +111,18 @@ def _build_asphalt_road_ground(col, wet=False):
     links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
 
     tc = nodes.new("ShaderNodeTexCoord")
-    # Macro variation (damp patches / tire wear tracks)
     n_macro = nodes.new("ShaderNodeTexNoise")
     n_macro.inputs["Scale"].default_value = 0.45
     n_macro.inputs["Detail"].default_value = 6.0
     n_macro.inputs["Roughness"].default_value = 0.65
     links.new(tc.outputs["Object"], n_macro.inputs["Vector"])
 
-    # Fine asphalt aggregate stones
     n_fine = nodes.new("ShaderNodeTexNoise")
     n_fine.inputs["Scale"].default_value = 55.0
     n_fine.inputs["Detail"].default_value = 10.0
     n_fine.inputs["Roughness"].default_value = 0.72
     links.new(tc.outputs["Object"], n_fine.inputs["Vector"])
 
-    # Color variation
     ramp_c = nodes.new("ShaderNodeValToRGB")
     ramp_c.color_ramp.elements[0].position = 0.25
     ramp_c.color_ramp.elements[0].color = (0.018, 0.019, 0.021, 1.0) if wet else (0.042, 0.044, 0.048, 1.0)
@@ -109,7 +131,6 @@ def _build_asphalt_road_ground(col, wet=False):
     links.new(n_fine.outputs["Fac"], ramp_c.inputs["Fac"])
     links.new(ramp_c.outputs["Color"], bsdf.inputs["Base Color"])
 
-    # Roughness variation (damp courtyard shows gorgeous subtle car reflections!)
     mr = nodes.new("ShaderNodeMapRange")
     mr.inputs["From Min"].default_value = 0.30
     mr.inputs["From Max"].default_value = 0.72
@@ -131,7 +152,6 @@ def _build_asphalt_road_ground(col, wet=False):
 
 def _build_studio_cyclorama(col):
     """Build infinite matte charcoal-slate automotive photography studio floor + smooth cyclorama bowl."""
-    # Large smooth bowl rising smoothly at r > 12 m so every horizon line is seamless from any 360° camera!
     segs = 64
     r_steps = [0.0, 4.0, 9.0, 12.0, 15.0, 18.0, 21.0, 24.0, 26.0]
     z_steps = [0.0, 0.0, 0.0, 0.05, 0.45, 1.45, 3.20, 6.00, 11.0]
@@ -151,7 +171,6 @@ def _build_studio_cyclorama(col):
     bsdf = nodes.new("ShaderNodeBsdfPrincipled")
     links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
 
-    # Clean matte-satin architectural dark charcoal studio concrete
     tc = nodes.new("ShaderNodeTexCoord")
     noise = nodes.new("ShaderNodeTexNoise")
     noise.inputs["Scale"].default_value = 1.6
@@ -164,8 +183,8 @@ def _build_studio_cyclorama(col):
     links.new(noise.outputs["Fac"], mr.inputs["Value"])
     links.new(mr.outputs["Result"], bsdf.inputs["Roughness"])
 
-    bsdf.inputs["Base Color"].default_value = (0.052, 0.055, 0.062, 1.0)
-    bsdf.inputs["Specular IOR Level"].default_value = 0.42
+    bsdf.inputs["Base Color"].default_value = (0.048, 0.051, 0.058, 1.0)
+    bsdf.inputs["Specular IOR Level"].default_value = 0.40
     cyc.data.materials.append(mat)
     return cyc
 
@@ -198,31 +217,30 @@ def setup_environment(mode="studio"):
 
     if mode == "studio":
         _build_studio_cyclorama(col)
-        w_bg.inputs["Color"].default_value = (0.032, 0.035, 0.042, 1.0)
-        w_bg.inputs["Strength"].default_value = 0.65
+        w_bg.inputs["Color"].default_value = (0.028, 0.031, 0.038, 1.0)
+        w_bg.inputs["Strength"].default_value = 0.55
 
-        # Sculptural Press-Studio Lighting (designed for liquid deep Ultra Red with razor specular ribbons!)
-        # 1. Elevated Narrow Overhead Ceiling Softbox Ribbon (carves sleek highlight along hood, roof & rear haunch
-        #    without harsh rectangular clipping in the front windshield!)
-        _add_area_light("Studio_Overhead_Main", (0.0, -0.35, 5.2), (0.0, -0.15, 0.7), 1.6, 6.2, 1280.0, (1.0, 0.99, 0.98), col, spread_deg=82)
-        # 2. High-Angle Sculpting Side Strips (positioned ABOVE door shoulder to graze flanks, NEVER wash them pink!)
-        _add_area_light("Studio_SideStrip_R", (4.8, 0.1, 2.85), (0.0, 0.0, 0.65), 6.8, 0.65, 520.0, (0.98, 0.99, 1.0), col, spread_deg=72)
-        _add_area_light("Studio_SideStrip_L", (-4.8, 0.1, 2.85), (0.0, 0.0, 0.65), 6.8, 0.65, 480.0, (1.0, 0.98, 0.96), col, spread_deg=72)
-        # 3. Low Subtle Wheel/Rocker Accent Rim Strips (gentle bounce illuminating Arachnid wheels & red calipers)
-        _add_area_light("Studio_LowRim_L", (-5.5, 0.0, 0.62), (0.0, 0.0, 0.35), 5.6, 0.45, 175.0, (0.97, 0.98, 1.0), col, spread_deg=85)
-        _add_area_light("Studio_LowRim_R", (5.5, 0.0, 0.62), (0.0, 0.0, 0.35), 5.6, 0.45, 155.0, (0.97, 0.98, 1.0), col, spread_deg=85)
-        # 4. Front 3/4 Key & Rear 3/4 Rim Kicker
-        _add_area_light("Studio_FrontFill", (-3.2, 6.2, 2.6), (0.0, 1.4, 0.6), 3.2, 1.4, 620.0, (1.0, 0.99, 0.97), col, spread_deg=75)
-        _add_area_light("Studio_RearRim", (3.0, -6.2, 2.5), (0.0, -1.6, 0.7), 3.4, 1.4, 580.0, (0.96, 0.98, 1.0), col, spread_deg=75)
-        # 5. Soft Cyclorama Wall Wash Lights (creates seamless luxury dark charcoal-grey studio horizon gradient!)
-        _add_area_light("Studio_WallWash_Back", (0.0, -9.5, 5.5), (0.0, -24.0, 3.2), 14.0, 3.0, 3200.0, (0.94, 0.96, 1.0), col, spread_deg=110)
-        _add_area_light("Studio_WallWash_Front", (0.0, 9.5, 5.5), (0.0, 24.0, 3.2), 14.0, 3.0, 3200.0, (0.94, 0.96, 1.0), col, spread_deg=110)
-        _add_area_light("Studio_WallWash_Right", (9.5, 0.0, 5.5), (24.0, 0.0, 3.2), 14.0, 3.0, 3000.0, (0.94, 0.96, 1.0), col, spread_deg=110)
-        # 6. Subtle Cabin Interior Soft Dome Fill so Sport Seats & Yoke read crisply through dark glass
-        _add_area_light("Studio_CabinFill", (0.0, 0.1, 1.28), (0.0, -0.1, 0.6), 0.75, 0.95, 22.0, (0.98, 0.99, 1.0), col, spread_deg=120)
+        # Commercial Press-Studio Feathered Silk Scrim Rig (silky gradient reflections, ZERO white box clipping!)
+        # 1. Feathered Overhead Ceiling Scrim shifted gently rearward for refined hood/roof highlight ribbon
+        _add_area_light("Studio_Overhead_Main", (0.0, -0.80, 5.5), (0.0, -0.35, 0.7), 1.6, 6.4, 1240.0, (1.0, 0.99, 0.98), col, spread_deg=82, feathered=True)
+        # 2. High-Angle Sculpting Feathered Side Strips (silky ribbon reflections along shoulders!)
+        _add_area_light("Studio_SideStrip_R", (4.9, 0.1, 2.95), (0.0, 0.0, 0.65), 7.2, 0.85, 580.0, (0.98, 0.99, 1.0), col, spread_deg=72, feathered=True)
+        _add_area_light("Studio_SideStrip_L", (-4.9, 0.1, 2.95), (0.0, 0.0, 0.65), 7.2, 0.85, 540.0, (1.0, 0.98, 0.96), col, spread_deg=72, feathered=True)
+        # 3. Subtle Wheel & Caliper Rim Fill (gentle feathered low fill keeps Michelin rubber jet-black!)
+        _add_area_light("Studio_LowRim_L", (-5.5, 0.0, 0.78), (0.0, 0.0, 0.38), 5.2, 0.45, 90.0, (0.97, 0.98, 1.0), col, spread_deg=80, feathered=True)
+        _add_area_light("Studio_LowRim_R", (5.5, 0.0, 0.78), (0.0, 0.0, 0.38), 5.2, 0.45, 80.0, (0.97, 0.98, 1.0), col, spread_deg=80, feathered=True)
+        # 4. Feathered Front 3/4 Key & Rear 3/4 Rim Kicker
+        _add_area_light("Studio_FrontFill", (-3.2, 6.2, 2.6), (0.0, 1.4, 0.6), 3.6, 1.6, 660.0, (1.0, 0.99, 0.97), col, spread_deg=75, feathered=True)
+        _add_area_light("Studio_RearRim", (3.0, -6.2, 2.5), (0.0, -1.6, 0.7), 3.6, 1.6, 580.0, (0.96, 0.98, 1.0), col, spread_deg=75, feathered=True)
+        # 5. Soft Cyclorama Wall Wash Lights (seamless luxury dark charcoal-slate studio horizon!)
+        _add_area_light("Studio_WallWash_Back", (0.0, -9.5, 5.5), (0.0, -24.0, 3.2), 14.0, 3.0, 3000.0, (0.94, 0.96, 1.0), col, spread_deg=110)
+        _add_area_light("Studio_WallWash_Front", (0.0, 9.5, 5.5), (0.0, 24.0, 3.2), 14.0, 3.0, 3000.0, (0.94, 0.96, 1.0), col, spread_deg=110)
+        _add_area_light("Studio_WallWash_Right", (9.5, 0.0, 5.5), (24.0, 0.0, 3.2), 14.0, 3.0, 2800.0, (0.94, 0.96, 1.0), col, spread_deg=110)
+        # 6. Subtle Cabin Interior Soft Dome Fill so rich All-Black Sport Seats & Carbon Dash read naturally
+        _add_area_light("Studio_CabinFill", (0.0, 0.1, 1.28), (0.0, -0.1, 0.6), 0.75, 0.95, 6.5, (0.94, 0.97, 1.0), col, spread_deg=120)
 
-        _set_light_strengths(drl=14.0, proj=4.5, fog=2.5, tail=11.0, screens=2.0)
-        scene.view_settings.exposure = -0.15
+        _set_light_strengths(drl=14.0, proj=4.5, fog=3.5, tail=11.0, screens=2.4)
+        scene.view_settings.exposure = -0.12
 
     elif mode == "daylight":
         _build_asphalt_road_ground(col, wet=False)
@@ -300,6 +318,9 @@ def setup_environment(mode="studio"):
         w_bg.inputs["Color"].default_value = (0.18, 0.18, 0.18, 1.0)
         w_bg.inputs["Strength"].default_value = 1.0
         zebra_mat = bpy.data.materials.get("Zebra_Diagnostic_Mat")
+        if zebra_mat is None:
+            from .materials import build_zebra_diagnostic_mat
+            zebra_mat = build_zebra_diagnostic_mat()
         if zebra_mat:
             for obj in bpy.data.objects:
                 if obj.name.startswith("Body_") or obj.name.startswith("Mirror_UpperCap"):

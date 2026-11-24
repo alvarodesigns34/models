@@ -43,20 +43,18 @@ def _eval_top_glass_surface(y_start, y_end, nu=32, nv=24, z_offset=-0.002):
 
 def build_top_glazing(col, mats):
     """Build Windshield, Panoramic All-Glass Roof, Rear Fastback Hatch Glass, and Frit/Camera details."""
-    # 1. Laminated Windshield (Y = +0.115 to +0.955) — single-sheet Fresnel architectural glass
+    # 1. Laminated Windshield (Y = +0.115 to +0.955) — flip_normals=True for verified upward (+Z) outward normals!
     g_ws = _eval_top_glass_surface(0.115, 0.955, nu=30, nv=24, z_offset=-0.002)
-    ws = create_grid_surface(
+    create_grid_surface(
         "Glass_Windshield", g_ws, col, material=mats["glass_windshield"],
-        mirror_x=True, flip_normals=False
+        mirror_x=True, flip_normals=True
     )
 
     # Windshield black ceramic frit perimeter band + top Autopilot HW4 triple-camera bezel
-    # Top frit header
     g_frit_top = _eval_top_glass_surface(0.115, 0.195, nu=24, nv=6, z_offset=-0.006)
-    create_grid_surface("Glass_Windshield_FritTop", g_frit_top, col, material=mats["glass_frit"], mirror_x=True)
-    # Bottom cowl frit
+    create_grid_surface("Glass_Windshield_FritTop", g_frit_top, col, material=mats["glass_frit"], mirror_x=True, flip_normals=True)
     g_frit_bot = _eval_top_glass_surface(0.875, 0.955, nu=24, nv=6, z_offset=-0.006)
-    create_grid_surface("Glass_Windshield_FritBot", g_frit_bot, col, material=mats["glass_frit"], mirror_x=True)
+    create_grid_surface("Glass_Windshield_FritBot", g_frit_bot, col, material=mats["glass_frit"], mirror_x=True, flip_normals=True)
 
     # Autopilot HW4 Forward Triple-Camera Trapezoid Housing (behind upper-center windshield!)
     bm = bmesh.new()
@@ -78,7 +76,6 @@ def build_top_glazing(col, mats):
     link_object(cam_pod, col)
     cam_pod.data.materials.append(mats["trim_matte_plastic"])
 
-    # 3 tiny circular forward camera lenses inside the trapezoid cutout (visible through windshield!)
     for idx, x_lens in enumerate([-0.036, 0.0, 0.036]):
         bpy.ops.mesh.primitive_cylinder_add(vertices=20, radius=0.008, depth=0.012, location=(x_lens, 0.245, 1.325))
         lens = bpy.context.active_object
@@ -89,12 +86,11 @@ def build_top_glazing(col, mats):
 
     # 2. Panoramic All-Glass Roof (Y = -1.095 to +0.108)
     g_roof = _eval_top_glass_surface(-1.095, 0.108, nu=30, nv=24, z_offset=-0.001)
-    roof = create_grid_surface(
+    create_grid_surface(
         "Glass_Panoramic_Roof", g_roof, col, material=mats["glass_roof"],
-        mirror_x=True, flip_normals=False
+        mirror_x=True, flip_normals=True
     )
 
-    # Subtle dark rubber roof-to-windshield and roof-to-hatch seam gaskets
     for sname, y_seam in [("Seal_Roof_Front", 0.111), ("Seal_Roof_Rear", -1.098)]:
         pts = []
         zc = BodyCurves.roof_center_z(y_seam)
@@ -105,12 +101,11 @@ def build_top_glazing(col, mats):
 
     # 3. Fastback Rear Hatch Glass (Y = -2.138 to -1.102)
     g_rear = _eval_top_glass_surface(-2.138, -1.102, nu=30, nv=24, z_offset=-0.002)
-    rear_glass = create_grid_surface(
+    create_grid_surface(
         "Glass_Rear_Hatch", g_rear, col, material=mats["glass_rear"],
-        mirror_x=True, flip_normals=False
+        mirror_x=True, flip_normals=True
     )
 
-    # High-mount 3rd LED Brake Light bar tucked cleanly under top of rear hatch glass
     pts_chmsl = []
     y_ch = -1.145
     zc_ch = BodyCurves.roof_center_z(y_ch)
@@ -119,9 +114,9 @@ def build_top_glazing(col, mats):
         pts_chmsl.append((u * xe_ch, y_ch, zc_ch + (ze_ch - zc_ch) * (u ** 1.92) - 0.010))
     create_tube_along_points("Light_CHMSL_ThirdBrake", pts_chmsl, (0.005, 0.004), col, material=mats["reflector_red"], segments=8, mirror_x=True)
 
-    # Cowl plenum satin-black tray between hood trailing edge & windshield base
+    # Cowl plenum satin-black tray tucked cleanly inside hood/windshield boundary
     g_cowl = _eval_top_glass_surface(0.925, 0.995, nu=28, nv=8, z_offset=-0.018)
-    create_grid_surface("Trim_Windshield_Cowl", g_cowl, col, material=mats["trim_matte_plastic"], mirror_x=True)
+    create_grid_surface("Trim_Windshield_Cowl", g_cowl, col, material=mats["trim_matte_plastic"], mirror_x=True, flip_normals=True)
 
 
 def _eval_side_window_surface(y0, y1, ny=22, nv=12, x_inset=0.007):

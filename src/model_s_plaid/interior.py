@@ -154,10 +154,19 @@ def build_dashboard_and_screens(col, mats):
         flip_normals=True, uv_scale=(4.0, 0.8)
     )
 
-    # 3. 12.3" Driver Instrument Cluster Screen recessed in driver binnacle (X = -0.37, Y = 0.50, Z = 0.84)
-    cl_w, cl_h = 0.295, 0.112
-    cx, cy, cz = -0.370, 0.515, 0.838
-    tilt = math.radians(12.0)
+    # 3. 12.3" Driver Instrument Cluster Screen recessed cleanly inside driver binnacle (visible over Yoke!)
+    cl_w, cl_h = 0.285, 0.106
+    cx, cy, cz = -0.370, 0.462, 0.848
+    tilt = math.radians(10.0)
+    # Dark binnacle bezel framing the 12.3" cluster cleanly
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(cx, cy + 0.008, cz))
+    cbez = bpy.context.active_object
+    cbez.name = "Interior_Screen_Cluster12in_Bezel"
+    cbez.scale = (cl_w + 0.016, 0.012, cl_h + 0.016)
+    cbez.rotation_euler = (-tilt, 0.0, 0.0)
+    link_object(cbez, col)
+    cbez.data.materials.append(mats["trim_satin_black"])
+
     dh_y = (cl_h * 0.5) * math.sin(tilt)
     dh_z = (cl_h * 0.5) * math.cos(tilt)
     _create_uv_plane(
@@ -171,21 +180,20 @@ def build_dashboard_and_screens(col, mats):
         col, mats["screen_cluster"]
     )
 
-    # 4. Floating 17.0" Landscape Central Touchscreen (384 mm x 226 mm, slim dark bezel!)
+    # 4. Floating 17.0" Landscape Central Touchscreen (384 mm x 226 mm, slim dark bezel — ZERO clipping!)
     sc_w, sc_h = 0.384, 0.226
-    sy, sz = 0.410, 0.758
+    sy, sz = 0.398, 0.764
     stilt = math.radians(14.0)
-    # Bezel housing box
-    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, sy + 0.008, sz))
+    # Note: (-stilt) tilts top toward +Y and bottom toward -Y, matching display plane 100%!
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, sy + 0.010, sz))
     bez = bpy.context.active_object
     bez.name = "Interior_Screen_Center17in_Bezel"
     bez.scale = (sc_w + 0.016, 0.014, sc_h + 0.016)
-    bez.rotation_euler = (stilt, 0.0, 0.0)
+    bez.rotation_euler = (-stilt, 0.0, 0.0)
     link_object(bez, col)
     bez.data.materials.append(mats["trim_satin_black"])
     add_bevel(bez, width=0.003, segments=2)
 
-    # Active glowing OLED display face
     dy = (sc_h * 0.5) * math.sin(stilt)
     dz = (sc_h * 0.5) * math.cos(stilt)
     _create_uv_plane(
@@ -200,45 +208,52 @@ def build_dashboard_and_screens(col, mats):
     )
 
     # 5. Sweeping Center Console (Y = -0.42..+0.55, X = ±0.165)
-    # Console main structural body (black vegan leather sidewalls)
     bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, 0.04, 0.455))
     cons = bpy.context.active_object
     cons.name = "Interior_CenterConsole_Body"
     cons.scale = (0.315, 0.94, 0.34)
     link_object(cons, col)
     cons.data.materials.append(mats["int_leather"])
-    add_bevel(cons, width=0.018, segments=3)
+    add_bevel(cons, width=0.022, segments=3)
 
     # Dual Angled Alcantara Wireless Phone Charger Pad directly under 17" screen
-    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, 0.385, 0.595))
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, 0.375, 0.592))
     chg = bpy.context.active_object
     chg.name = "Interior_WirelessCharger_Alcantara"
     chg.scale = (0.255, 0.175, 0.018)
     chg.rotation_euler = (math.radians(-38.0), 0.0, 0.0)
     link_object(chg, col)
     chg.data.materials.append(mats["int_alcantara"])
-    add_bevel(chg, width=0.005, segments=2)
+    add_bevel(chg, width=0.006, segments=2)
 
-    # Matte Carbon Fiber Center Console Sliding Storage Lid (middle bay)
+    # Matte 2x2 Twill Carbon Fiber Center Console Sliding Storage Lid (middle bay, raised proud to catch highlights!)
     g_lid = np.zeros((10, 10, 3), dtype=np.float64)
     for j, v in enumerate(np.linspace(0.0, 1.0, 10)):
-        y = -0.02 + v * 0.31
-        z = 0.630 + 0.016 * (v ** 1.2)
+        y = -0.02 + v * 0.30
+        z = 0.634 + 0.014 * (v ** 1.2)
         for i, u in enumerate(np.linspace(-1.0, 1.0, 10)):
-            g_lid[j, i] = (u * 0.132, y, z)
+            crown = 0.005 * (1.0 - u * u)
+            g_lid[j, i] = (u * 0.132, y, z + crown)
     create_grid_surface(
         "Interior_Console_CarbonLid", g_lid, col, material=mats["carbon_int"],
-        uv_scale=(1.5, 2.0)
+        flip_normals=True, uv_scale=(1.4, 2.0)
     )
 
-    # Padded Vegan Leather Center Armrest (Y = -0.38..-0.03, Z = 0.665)
-    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, -0.21, 0.652))
-    arm = bpy.context.active_object
-    arm.name = "Interior_Console_Armrest"
-    arm.scale = (0.285, 0.36, 0.056)
-    link_object(arm, col)
-    arm.data.materials.append(mats["int_leather"])
-    add_bevel(arm, width=0.016, segments=3)
+    # Organically Contoured Padded Vegan Leather Center Armrest (smoothly crowned cushion, NOT a sharp box!)
+    nu_a, nv_a = 16, 18
+    g_arm = np.zeros((nv_a, nu_a, 3), dtype=np.float64)
+    for j, v in enumerate(np.linspace(0.0, 1.0, nv_a)):
+        y = -0.39 + v * 0.37
+        end_drop = -0.026 * ((2.0 * v - 1.0) ** 4.0)
+        for i, u in enumerate(np.linspace(-1.0, 1.0, nu_a)):
+            x = u * 0.144
+            side_drop = -0.032 * (u ** 4.0)
+            z = 0.676 + end_drop + side_drop
+            g_arm[j, i] = (x, y, z)
+    create_grid_surface(
+        "Interior_Console_Armrest", g_arm, col, material=mats["int_leather"],
+        flip_normals=True, add_flange=True, flange_depth=0.028, flange_bevel=0.008
+    )
 
     # 9.4" Rear Passenger Touchscreen (facing rearward at Y = -0.435, Z = 0.545)
     rw, rh = 0.215, 0.122
@@ -253,10 +268,10 @@ def build_dashboard_and_screens(col, mats):
     _create_uv_plane(
         "Interior_Screen_Rear9in_Display",
         [
-            ( rw * 0.5, -0.440, 0.545 - rh * 0.5),
             (-rw * 0.5, -0.440, 0.545 - rh * 0.5),
-            (-rw * 0.5, -0.436, 0.545 + rh * 0.5),
+            ( rw * 0.5, -0.440, 0.545 - rh * 0.5),
             ( rw * 0.5, -0.436, 0.545 + rh * 0.5),
+            (-rw * 0.5, -0.436, 0.545 + rh * 0.5),
         ],
         col, mats["screen_rear"]
     )
@@ -265,19 +280,16 @@ def build_dashboard_and_screens(col, mats):
 def build_steering_yoke(col, mats):
     """
     Build the iconic Tesla Model S Plaid Steering Yoke (flat-top sculpted U/trapezoid rim,
-    satin-silver accent spokes, dual knurled aluminum scroll wheels, center airbag horn pad).
+    satin-silver accent spokes, dual knurled aluminum scroll wheels, center airbag horn pad w/ T).
     """
     cx, cy, cz = -0.370, 0.285, 0.778
-    tilt = math.radians(22.0)  # Tilted ergonomically toward driver
+    tilt = math.radians(22.0)
 
     def yoke_to_world(lx, ly, lz):
-        # Local plane: X right, Z up, Y normal toward windshield; rotate around X by tilt
         wy = cy + ly * math.cos(tilt) - lz * math.sin(tilt)
         wz = cz + ly * math.sin(tilt) + lz * math.cos(tilt)
         return (cx + lx, wy, wz)
 
-    # 1. Sculpted Yoke Rim (open flat-top U-shape: left grip -> lower flat bar -> right grip!)
-    # Classic Plaid yoke dimensions: ~372 mm wide, ~205 mm tall
     local_rim = [
         (-0.158, 0.0,  0.072),
         (-0.175, 0.0,  0.048),
@@ -299,14 +311,12 @@ def build_steering_yoke(col, mats):
         material=mats["int_leather"], segments=18, cap_ends=True
     )
 
-    # 2. Horizontal Left & Right Spoke Bridges + Lower Vertical Twin Strut
     for sign, tag in [(-1.0, "L"), (1.0, "R")]:
         sp_pts = [yoke_to_world(sign * x, 0.004, -0.012) for x in [0.052, 0.115, 0.174]]
         create_tube_along_points(
             f"Interior_Yoke_Spoke_{tag}", sp_pts, (0.022, 0.012), col,
             material=mats["trim_gloss_black"], segments=12
         )
-        # Knurled satin-silver scroll wheel on each spoke
         sx, sy, sz = yoke_to_world(sign * 0.118, -0.012, -0.010)
         bpy.ops.mesh.primitive_cylinder_add(vertices=18, radius=0.0085, depth=0.011, location=(sx, sy, sz))
         sw = bpy.context.active_object
@@ -315,7 +325,6 @@ def build_steering_yoke(col, mats):
         link_object(sw, col)
         sw.data.materials.append(mats["int_satin_silver"])
 
-    # Satin-silver bottom accent bezel strut connecting hub to lower flat rim
     for sign, tag in [(-1.0, "L"), (1.0, "R")]:
         st_pts = [yoke_to_world(sign * 0.032, 0.002, -0.045), yoke_to_world(sign * 0.045, 0.002, -0.104)]
         create_tube_along_points(
@@ -323,7 +332,6 @@ def build_steering_yoke(col, mats):
             material=mats["int_satin_silver"], segments=10
         )
 
-    # 3. Center Trapezoid Airbag Pad + Metallic T Emblem + Steering Column Shroud
     bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.068, depth=0.042, location=(cx, cy + 0.015, cz - 0.006))
     hub = bpy.context.active_object
     hub.name = "Interior_Yoke_AirbagHub"
@@ -332,6 +340,20 @@ def build_steering_yoke(col, mats):
     link_object(hub, col)
     hub.data.materials.append(mats["int_leather"])
     add_bevel(hub, width=0.008, segments=2)
+
+    tx, ty, tz = yoke_to_world(0.0, -0.010, -0.005)
+    fcurve = bpy.data.curves.new(name="Interior_Yoke_T_Curve", type="FONT")
+    fcurve.body = "T"
+    fcurve.align_x = "CENTER"
+    fcurve.align_y = "CENTER"
+    fcurve.size = 0.038
+    fcurve.extrude = 0.0018
+    fcurve.bevel_depth = 0.0004
+    tobj = bpy.data.objects.new("Interior_Yoke_TeslaT", fcurve)
+    link_object(tobj, col)
+    tobj.location = (tx, ty, tz)
+    tobj.rotation_euler = (math.radians(90) + tilt, 0.0, 0.0)
+    tobj.data.materials.append(mats["int_satin_silver"])
 
     bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=0.046, depth=0.22, location=(cx, cy + 0.135, cz + 0.042))
     col_shroud = bpy.context.active_object
@@ -343,28 +365,29 @@ def build_steering_yoke(col, mats):
 
 def _build_plaid_sport_seat(name_prefix, x_center, y_hip, z_base, col, mats):
     """
-    Build one sculpted 2024 Model S Plaid Sport Seat matching interior_tesla-model-s-sport-seats.jpeg:
-      - Deeply bolstered seat base (perforated leather center + charcoal Alcantara outer thigh bolsters)
-      - Track-sculpted backrest with prominent Alcantara side torso bolsters
-      - Integrated tapered headrest
-      - Recessed metallic Plaid composite chest emblem below headrest!
-      - Clean sculpted rear shell
+    Build one organically contoured 2024 Model S Plaid Sport Seat matching interior_tesla-model-s-sport-seats.jpeg:
+      - Deeply bucketed perforated vegan leather seat pan + smoothly tapered Alcantara thigh bolsters
+      - Track-sculpted backrest with organically tapered wrap-around Alcantara lateral wings (zero flat tube caps!)
+      - Integrated tapered headrest + flush recessed metallic Plaid chest emblem
     """
-    # 1. Seat Pan Center Cushion (perforated vegan leather, horizontal ribs)
-    nu, nv = 16, 16
+    # 1. Contoured Seat Pan Cushion (perforated vegan leather + subtle horizontal stitched pleats)
+    nu, nv = 20, 18
     g_pan = np.zeros((nv, nu, 3), dtype=np.float64)
     for j, v in enumerate(np.linspace(0.0, 1.0, nv)):
-        y = y_hip + v * 0.48  # hip back -> front thigh edge
-        z_slope = z_base + 0.045 * v + 0.022 * math.sin(v * math.pi)
-        # Subtle horizontal stitched pleats!
-        pleat = 0.005 * abs(math.sin(v * 4.0 * math.pi))
+        y = y_hip + v * 0.49
+        z_slope = z_base + 0.042 * v + 0.024 * math.sin(v * math.pi)
+        pleat = 0.004 * abs(math.sin(v * 4.0 * math.pi))
         for i, u in enumerate(np.linspace(-1.0, 1.0, nu)):
-            x = x_center + u * 0.185
-            bucket_dip = -0.016 * (1.0 - u * u)
-            g_pan[j, i] = (x, y, z_slope + bucket_dip + pleat)
-    create_grid_surface(f"{name_prefix}_Cushion_Perf", g_pan, col, material=mats["int_leather_perf"])
+            x = x_center + u * 0.245
+            # Deep sculpted side thigh bolsters smoothly integrated into cushion edges!
+            bolster_up = 0.056 * (abs(u) ** 2.6) * math.sin(v * math.pi) ** 0.55
+            center_dip = -0.015 * (1.0 - u * u)
+            g_pan[j, i] = (x, y, z_slope + center_dip + bolster_up + pleat)
+    create_grid_surface(
+        f"{name_prefix}_Cushion_Perf", g_pan, col, material=mats["int_leather_perf"],
+        flip_normals=True, add_flange=True, flange_depth=0.055, flange_bevel=0.012
+    )
 
-    # Lower structural seat base plinth
     bpy.ops.mesh.primitive_cube_add(size=1.0, location=(x_center, y_hip + 0.22, z_base - 0.042))
     plinth = bpy.context.active_object
     plinth.name = f"{name_prefix}_Plinth"
@@ -373,93 +396,102 @@ def _build_plaid_sport_seat(name_prefix, x_center, y_hip, z_base, col, mats):
     plinth.data.materials.append(mats["int_leather"])
     add_bevel(plinth, width=0.025, segments=3)
 
-    # 2. High-Support Alcantara Side Thigh Bolsters (L/R on seat cushion)
+    # Smoothly tapered charcoal Alcantara outer thigh wing pads (radius tapers smoothly to 0.012 at ends -> zero sausage caps!)
     for s_side, stag in [(-1.0, "L"), (1.0, "R")]:
-        pts_tb = [
-            (x_center + s_side * 0.225, y_hip + 0.02, z_base + 0.045),
-            (x_center + s_side * 0.242, y_hip + 0.18, z_base + 0.072),
-            (x_center + s_side * 0.238, y_hip + 0.36, z_base + 0.088),
-            (x_center + s_side * 0.215, y_hip + 0.47, z_base + 0.068),
-        ]
+        pts_tb = []
+        rads_tb = []
+        for k, v in enumerate(np.linspace(0.05, 0.94, 9)):
+            env = math.sin(v * math.pi) ** 0.55
+            pts_tb.append((
+                x_center + s_side * (0.215 + 0.028 * env),
+                y_hip + v * 0.48,
+                z_base + 0.040 + 0.046 * env + 0.025 * v,
+            ))
+            rads_tb.append((0.016 + 0.036 * env, 0.016 + 0.038 * env))
         create_tube_along_points(
-            f"{name_prefix}_ThighBolster_{stag}", pts_tb, (0.056, 0.062), col,
-            material=mats["int_alcantara"], segments=14
+            f"{name_prefix}_ThighBolster_{stag}", pts_tb, rads_tb, col,
+            material=mats["int_alcantara"], segments=16
         )
 
-    # 3. Sculpted Sport Backrest + Integrated Tapered Headrest (reclined ~21 deg!)
-    # Sweeps from hip Z = z_base+0.03 up to headrest top Z = z_base+0.815 (Z ~ 1.245 m, clearing roof!)
+    # 2. Sculpted Sport Backrest + Integrated Tapered Headrest (reclined ~21 deg!)
     recline = math.radians(21.0)
-    ny_b, nu_b = 24, 18
+    ny_b, nu_b = 28, 22
     g_back_front = np.zeros((ny_b, nu_b, 3), dtype=np.float64)
     g_back_shell = np.zeros((ny_b, nu_b, 3), dtype=np.float64)
 
     for j, v in enumerate(np.linspace(0.0, 1.0, ny_b)):
-        h = v * 0.805  # distance up spine
-        # Seat width profile: wide at waist/shoulders (v=0..0.68), tapers cleanly into tall sport headrest (v=0.72..1.0)!
+        h = v * 0.805
         if v < 0.62:
-            hw = 0.245 + 0.022 * math.sin((v / 0.62) * math.pi)
+            hw = 0.252 + 0.025 * math.sin((v / 0.62) * math.pi)
         elif v < 0.78:
             t_sh = (v - 0.62) / 0.16
-            hw = 0.245 + (0.118 - 0.245) * (t_sh ** 1.1)
+            hw = 0.252 + (0.118 - 0.252) * (t_sh ** 1.1)
         else:
             t_hd = (v - 0.78) / 0.22
-            hw = 0.118 * (1.0 - 0.32 * (t_hd ** 1.5))
+            hw = 0.118 * (1.0 - 0.30 * (t_hd ** 1.5))
 
         yc = y_hip - h * math.sin(recline)
         zc = z_base + 0.035 + h * math.cos(recline)
-        # Forward headrest support curve at top
-        yc += 0.032 * max(0.0, (v - 0.68) / 0.32) ** 1.5
+        yc += 0.034 * max(0.0, (v - 0.68) / 0.32) ** 1.5
 
         for i, u in enumerate(np.linspace(-1.0, 1.0, nu_b)):
             x = x_center + u * hw
-            # Deep lateral bucket wrap forward on outer bolsters (strongest at v=0.15..0.60!)
-            bolster_env = math.sin(min(v / 0.72, 1.0) * math.pi)
-            wrap_fwd = 0.072 * (u * u) * bolster_env
+            bolster_env = math.sin(min(v / 0.72, 1.0) * math.pi) ** 0.78
+            # Deep ergonomic track lateral wrap built directly into the continuous backrest!
+            wrap_fwd = 0.095 * (abs(u) ** 2.2) * bolster_env
             lumbar = 0.022 * math.exp(-((v - 0.25) / 0.18) ** 2) * (1.0 - u * u)
-            y_front = yc + wrap_fwd + lumbar
+            pleat = 0.0035 * abs(math.sin(v * 6.0 * math.pi)) * (1.0 - abs(u)) * (1.0 if v < 0.60 else 0.0)
+            y_front = yc + wrap_fwd + lumbar + pleat
             y_rear = yc - 0.075 * (1.0 - 0.45 * (u * u)) * (1.0 - 0.25 * v)
             g_back_front[j, i] = (x, y_front, zc)
             g_back_shell[j, i] = (x, y_rear, zc)
 
-    create_grid_surface(f"{name_prefix}_Backrest_Front", g_back_front, col, material=mats["int_leather_perf"], flip_normals=True)
+    create_grid_surface(
+        f"{name_prefix}_Backrest_Front", g_back_front, col, material=mats["int_leather_perf"],
+        flip_normals=True, add_flange=True, flange_depth=0.045, flange_bevel=0.012
+    )
     create_grid_surface(f"{name_prefix}_Backrest_Shell", g_back_shell, col, material=mats["int_leather"], flip_normals=False)
 
-    # Prominent Track-Inspired Alcantara Side Torso Bolster Pads (L/R)
+    # Organically Tapered Charcoal Alcantara Torso Bolster Pads (blending smoothly into shoulder & waist -> ZERO flat ends!)
     for s_side, stag in [(-1.0, "L"), (1.0, "R")]:
         pts_sb = []
-        for v in np.linspace(0.08, 0.64, 8):
+        rads_sb = []
+        for v in np.linspace(0.06, 0.68, 12):
+            tv = (v - 0.06) / (0.68 - 0.06)
+            env = math.sin(tv * math.pi) ** 0.65
             h = v * 0.805
-            hw = 0.242 + 0.022 * math.sin((v / 0.62) * math.pi)
-            yc = y_hip - h * math.sin(recline) + 0.058 * math.sin((v / 0.72) * math.pi)
+            hw = 0.242 + 0.024 * math.sin(min(v / 0.62, 1.0) * math.pi)
+            yc = y_hip - h * math.sin(recline) + 0.082 * (math.sin(min(v / 0.72, 1.0) * math.pi) ** 0.78)
             zc = z_base + 0.035 + h * math.cos(recline)
-            pts_sb.append((x_center + s_side * (hw - 0.012), yc, zc))
+            pts_sb.append((x_center + s_side * (hw - 0.018), yc, zc))
+            rads_sb.append((0.010 + 0.030 * env, 0.010 + 0.036 * env))
         create_tube_along_points(
-            f"{name_prefix}_TorsoBolster_{stag}", pts_sb, (0.044, 0.052), col,
-            material=mats["int_alcantara"], segments=14
+            f"{name_prefix}_TorsoBolster_{stag}", pts_sb, rads_sb, col,
+            material=mats["int_alcantara"], segments=16
         )
 
-    # Signature 2024 Sport Seat Recessed Metallic Plaid Composite Chest Emblem! (v ~ 0.64)
+    # Flush Sleek Recessed 2024 Sport Seat Metallic Plaid Chest Emblem (v ~ 0.64, sits flush with backrest!)
     h_em = 0.635 * 0.805
-    ye = y_hip - h_em * math.sin(recline) + 0.012
+    ye = y_hip - h_em * math.sin(recline) + 0.002
     ze = z_base + 0.035 + h_em * math.cos(recline)
-    ew, eh = 0.115, 0.028
-    # Dark recessed trim bezel
-    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(x_center, ye - 0.004, ze))
+    ew, eh = 0.108, 0.025
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(x_center, ye - 0.003, ze))
     ebez = bpy.context.active_object
     ebez.name = f"{name_prefix}_PlaidEmblem_Bezel"
-    ebez.scale = (ew + 0.016, 0.016, eh + 0.010)
+    ebez.scale = (ew + 0.014, 0.010, eh + 0.008)
     ebez.rotation_euler = (-recline, 0.0, 0.0)
     link_object(ebez, col)
     ebez.data.materials.append(mats["trim_gloss_black"])
 
-    # UV-mapped Plaid composite insert facing forward (+Y)
+    eh_y = (eh * 0.5) * math.sin(recline)
+    eh_z = (eh * 0.5) * math.cos(recline)
     _create_uv_plane(
         f"{name_prefix}_PlaidEmblem_Insert",
         [
-            (x_center + ew * 0.5, ye + 0.006, ze - eh * 0.5),
-            (x_center - ew * 0.5, ye + 0.006, ze - eh * 0.5),
-            (x_center - ew * 0.5, ye + 0.001, ze + eh * 0.5),
-            (x_center + ew * 0.5, ye + 0.001, ze + eh * 0.5),
+            (x_center + ew * 0.5, ye + 0.004 + eh_y, ze - eh_z),
+            (x_center - ew * 0.5, ye + 0.004 + eh_y, ze - eh_z),
+            (x_center - ew * 0.5, ye + 0.004 - eh_y, ze + eh_z),
+            (x_center + ew * 0.5, ye + 0.004 - eh_y, ze + eh_z),
         ],
         col, mats["plaid_badge"]
     )
