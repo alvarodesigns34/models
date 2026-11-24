@@ -45,7 +45,7 @@ def _headlight_outline_point(u, v):
     dome = 0.011 * math.sin(v * math.pi) * math.sin(u * math.pi)
     x = x_lo + (x_hi - x_lo) * v - 0.0015
     y = y_lo + (y_hi - y_lo) * v - 0.002 + dome
-    z = z_lo + (z_hi - z_lo) * v - 0.001 * v
+    z = z_lo + (z_hi - z_lo) * v - 0.001 * v * math.sin(u * math.pi)
     return x, y, z
 
 

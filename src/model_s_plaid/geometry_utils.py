@@ -451,6 +451,9 @@ def create_revolved_mesh(name, profile_rz, collection, material=None,
             except ValueError:
                 pass
 
+    if any(radius == 0.0 for radius, _ in profile_rz):
+        # Weld coincident vertices at a pole into a triangle fan.
+        bmesh.ops.remove_doubles(bm, verts=list(bm.verts), dist=1e-7)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     mesh = bpy.data.meshes.new(name)
     bm.to_mesh(mesh)

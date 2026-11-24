@@ -268,10 +268,11 @@ def eval_headlight_upper_rim(u):
     """Exact upper brow of Matrix LED headlight locking 0.0 mm to Hood (u<=0.5) & Fender (u>=0.5)."""
     u = max(0.0, min(1.0, float(u)))
     x_lo, y_lo, z_lo = eval_headlight_lower_rim(u)
-    x = 0.398 + (HL_OUTER_X - 0.002 - 0.398) * (u ** 0.98)
+    x = 0.398 + (HL_OUTER_X - 0.398) * (u ** 0.98)
     y = 2.266 - (2.266 - HL_OUTER_Y) * (u ** 1.13)
     arch = 0.082 * (math.sin(u * math.pi) ** 1.15)
-    z = z_lo + 0.010 * (1.0 - 0.20 * u) + arch
+    inner_height = 0.010 * (1.0 - 0.20 * u) * (1.0 - smootherstep(0.78, 1.0, u))
+    z = z_lo + inner_height + arch
     return x, y, z
 
 
@@ -279,6 +280,14 @@ def eval_headlight_upper_rim(u):
 FRONT_ARCH_SEAM_PHI = math.radians(28.0)
 FRONT_SEAM_Y_ARCH = C.Y_FRONT_AXLE + C.FRONT_ARCH_RAD * math.cos(FRONT_ARCH_SEAM_PHI)  # ~1.831
 FRONT_SEAM_Z_ARCH = C.FRONT_WHEEL_Z + C.FRONT_ARCH_RAD * math.sin(FRONT_ARCH_SEAM_PHI)  # ~0.539
+
+
+def eval_front_fender_bumper_join(t):
+    """Shared painted edge from the wheel arch (0) to the headlamp tip (1)."""
+    y = FRONT_SEAM_Y_ARCH + (HL_OUTER_Y - FRONT_SEAM_Y_ARCH) * t
+    z = FRONT_SEAM_Z_ARCH + (HL_OUTER_Z - FRONT_SEAM_Z_ARCH) * t
+    flare = 0.005 * math.exp(-((t / 0.22) ** 2)) * (1.0 - smootherstep(0.80, 1.0, t))
+    return BodyCurves.eval_flank_x_at_yz(y, z) + flare, y, z
 
 # 3. Rear Bumper <-> Rear Quarter Unified C2 Cubic-Bezier Surface!
 REAR_ARCH_SEAM_PHI = math.radians(150.0)
@@ -497,6 +506,8 @@ def build_front_bumper(col, mats):
     """
     nu, nv = 64, 40
     us = np.linspace(0.0, 1.0, nu)
+    lamp_tip = 0.84
+    us[np.abs(us - lamp_tip).argmin()] = lamp_tip
     vs = np.linspace(0.0, 1.0, nv)
 
     grid = np.zeros((nv, nu, 3), dtype=np.float64)
@@ -514,14 +525,12 @@ def build_front_bumper(col, mats):
             x_top = 0.398 * t_m
             y_top = 2.388 - 0.120 * (t_m ** 1.85)
             z_top = 0.594 - 0.008 * (t_m ** 1.5)
-        elif u < 0.84:
-            t_h = (u - 0.34) / 0.50
+        elif u <= lamp_tip:
+            t_h = (u - 0.34) / (lamp_tip - 0.34)
             x_top, y_top, z_top = eval_headlight_lower_rim(t_h)
         else:
-            t_f = (u - 0.84) / 0.16
-            y_top = HL_OUTER_Y + (FRONT_SEAM_Y_ARCH - HL_OUTER_Y) * t_f
-            z_top = HL_OUTER_Z + (FRONT_SEAM_Z_ARCH - HL_OUTER_Z) * t_f
-            x_top = BodyCurves.eval_flank_x_at_yz(y_top, z_top) + 0.004 * t_f
+            t_f = (1.0 - u) / (1.0 - lamp_tip)
+            x_top, y_top, z_top = eval_front_fender_bumper_join(t_f)
 
         z_bot = 0.136 + 0.012 * (u ** 1.4)
         y_bot = y_nose - 0.012 * (1.0 - 0.5 * u)
@@ -696,6 +705,9 @@ def build_front_fender(col, mats, master_clay):
         for j in range(n_rad):
             tr = j / (n_rad - 1)
             tr_e = tr ** 1.15
+            if i == 0:
+                grid[j, i] = eval_front_fender_bumper_join(tr_e)
+                continue
             y = y_in + (y_out - y_in) * tr_e
             z = z_in + (z_out - z_in) * tr_e
 
@@ -705,7 +717,7 @@ def build_front_fender(col, mats, master_clay):
                 t_top = smootherstep(0.50, 1.0, tr)
                 t_hl = (phi_deg - 28.0) / 32.0
                 x_hl, _, _ = eval_headlight_upper_rim(1.0 - 0.50 * t_hl)
-                x = x_side + (x_hl - x_side) * t_top * smootherstep(28.0, 54.0, phi_deg)
+                x = x_side + (x_hl - x_side) * t_top
             elif 60.0 <= phi_deg <= 144.0 and tr > 0.45:
                 t_top = smootherstep(0.45, 1.0, tr)
                 if y >= 0.955:
